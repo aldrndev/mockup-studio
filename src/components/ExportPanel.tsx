@@ -66,6 +66,15 @@ export function ExportPanel({ stageRef }: Props) {
     // Use height as the anchor for consistency across variable-width cuts
     const scale = preset.height / stageHeight;
 
+    // Generate timestamp filename (ddmmyyhhmm)
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, "0");
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const yy = String(now.getFullYear()).slice(-2);
+    const hh = String(now.getHours()).padStart(2, "0");
+    const min = String(now.getMinutes()).padStart(2, "0");
+    const timestamp = `${dd}${mm}${yy}${hh}${min}`;
+
     try {
       // Single export logic
       if (frames.length === 1) {
@@ -81,7 +90,7 @@ export function ExportPanel({ stageRef }: Props) {
         });
 
         const blob = await (await fetch(dataUrl)).blob();
-        saveAs(blob, `mockup-${cutPreset}-frame-1.png`);
+        saveAs(blob, `${timestamp}.png`);
       } else {
         // ZIP export for multiple frames
         const zip = new JSZip();
@@ -101,7 +110,7 @@ export function ExportPanel({ stageRef }: Props) {
 
           // Strip base64 prefix
           const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
-          zip.file(`mockup-${cutPreset}-frame-${i + 1}.png`, base64Data, {
+          zip.file(`${i + 1}.png`, base64Data, {
             base64: true,
           });
 
@@ -110,7 +119,7 @@ export function ExportPanel({ stageRef }: Props) {
         }
 
         const content = await zip.generateAsync({ type: "blob" });
-        saveAs(content, `mockup-set-${cutPreset}.zip`);
+        saveAs(content, `${timestamp}.zip`);
       }
     } finally {
       // 4. Restore original state
