@@ -32,16 +32,16 @@ export function TextEditor() {
           </span>
           <span
             className={`form-counter ${
-              headline.text.length >= 35 ? "warn" : ""
+              headline.text.length >= 70 ? "warn" : ""
             }`}
           >
-            {headline.text.length}/40
+            {headline.text.length}/80
           </span>
         </div>
         <input
           type="text"
           value={headline.text}
-          onChange={(e) => setHeadline({ text: e.target.value.slice(0, 40) })}
+          onChange={(e) => setHeadline({ text: e.target.value.slice(0, 80) })}
           placeholder="Your amazing headline"
           className="form-input !h-11 !text-[14px] font-medium"
         />
@@ -55,15 +55,15 @@ export function TextEditor() {
           </span>
           <span
             className={`form-counter ${
-              subtitle.text.length >= 70 ? "warn" : ""
+              subtitle.text.length >= 140 ? "warn" : ""
             }`}
           >
-            {subtitle.text.length}/80
+            {subtitle.text.length}/160
           </span>
         </div>
         <textarea
           value={subtitle.text}
-          onChange={(e) => setSubtitle({ text: e.target.value.slice(0, 80) })}
+          onChange={(e) => setSubtitle({ text: e.target.value.slice(0, 160) })}
           placeholder="Describe your app features..."
           className="form-input !h-32 py-3 leading-relaxed resize-none !text-[13px]"
         />
