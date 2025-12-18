@@ -1,0 +1,25 @@
+{
+  "name": "iPhone 16 Pro Max",
+  "type": "iphone",
+  "frameWidth": 430,
+  "frameHeight": 932,
+  "screen": {
+    "x": 12,
+    "y": 12,
+    "width": 406,
+    "height": 908,
+    "radius": 55
+  },
+  "bezelWidth": 12,
+  "dynamicIsland": {
+    "width": 120,
+    "height": 36,
+    "y": 22,
+    "radius": 18
+  },
+  "exportPresets": {
+    "appstore": { "width": 1320, "height": 2868 },
+    "playstore": { "width": 1080, "height": 1920 },
+    "social": { "width": 1080, "height": 1080 }
+  }
+}

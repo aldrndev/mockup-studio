@@ -1,0 +1,27 @@
+{
+  "name": "MacBook Pro 14",
+  "type": "desktop",
+  "frameWidth": 800,
+  "frameHeight": 540,
+  "screen": {
+    "x": 24,
+    "y": 24,
+    "width": 752,
+    "height": 470,
+    "radius": 12
+  },
+  "bezelWidth": 12,
+  "notch": {
+    "width": 120,
+    "height": 24
+  },
+  "base": {
+    "height": 18,
+    "radius": 4
+  },
+  "exportPresets": {
+    "appstore": { "width": 2880, "height": 1800 },
+    "playstore": { "width": 1920, "height": 1080 },
+    "social": { "width": 1200, "height": 630 }
+  }
+}

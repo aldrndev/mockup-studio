@@ -1,0 +1,24 @@
+{
+  "name": "Samsung Galaxy S25 Ultra",
+  "type": "android",
+  "frameWidth": 412,
+  "frameHeight": 892,
+  "screen": {
+    "x": 10,
+    "y": 10,
+    "width": 392,
+    "height": 872,
+    "radius": 38
+  },
+  "bezelWidth": 10,
+  "punchHole": {
+    "x": 206,
+    "y": 32,
+    "radius": 10
+  },
+  "exportPresets": {
+    "appstore": { "width": 1290, "height": 2796 },
+    "playstore": { "width": 1080, "height": 1920 },
+    "social": { "width": 1080, "height": 1080 }
+  }
+}

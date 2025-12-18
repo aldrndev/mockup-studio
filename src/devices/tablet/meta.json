@@ -1,0 +1,19 @@
+{
+  "name": "iPad Pro 12.9",
+  "type": "tablet",
+  "frameWidth": 560,
+  "frameHeight": 752,
+  "screen": {
+    "x": 20,
+    "y": 20,
+    "width": 520,
+    "height": 712,
+    "radius": 18
+  },
+  "bezelWidth": 20,
+  "exportPresets": {
+    "appstore": { "width": 2048, "height": 2732 },
+    "playstore": { "width": 1200, "height": 1920 },
+    "social": { "width": 1080, "height": 1080 }
+  }
+}
