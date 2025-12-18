@@ -1,27 +1,53 @@
 import { create } from "zustand";
-import type {
-  DeviceType,
-  BackgroundConfig,
-  TextOverlay,
-  ExportPresetKey,
-  TextPreset,
-} from "../types/device";
+import type { DeviceType, ExportPresetKey } from "../types/device";
+
+// Editor Types
+export type BackgroundBase = "solid" | "gradient";
+export type BackgroundStyle = "none" | "radial" | "spotlight";
+export type OverlayPattern = "none" | "noise" | "dots" | "grid";
+
+export interface Background {
+  type: BackgroundBase; // Base layer (Solid/Gradient)
+  style: BackgroundStyle; // Effect layer (Glow/Spotlight)
+  color1: string;
+  color2: string; // Used for gradient/radial secondary color
+  angle: number; // For linear gradient
+  noise: number; // 0-1 opacity
+  pattern: OverlayPattern;
+}
+
+export interface TextOverlay {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  fontFamily: string;
+  fontWeight: number;
+  fill: string;
+  type: "headline" | "subtitle";
+}
+
+// Text Presets (Restored)
+export type TextPreset = "appstore" | "startup" | "bold";
 
 interface EditorState {
+  // Canvas State
   screenshot: string | null;
   deviceType: DeviceType;
-  background: BackgroundConfig;
+  background: Background;
   headline: TextOverlay;
   subtitle: TextOverlay;
-  textPreset: TextPreset;
+  textPreset: TextPreset; // Restored
   exportPreset: ExportPresetKey;
 
-  setScreenshot: (screenshot: string | null) => void;
-  setDeviceType: (deviceType: DeviceType) => void;
-  setBackground: (background: Partial<BackgroundConfig>) => void;
-  setHeadline: (headline: Partial<TextOverlay>) => void;
-  setSubtitle: (subtitle: Partial<TextOverlay>) => void;
-  setTextPreset: (preset: TextPreset) => void;
+  // Actions
+  setScreenshot: (src: string | null) => void;
+  setDeviceType: (type: DeviceType) => void;
+  setBackground: (bg: Partial<Background>) => void;
+  setHeadline: (text: Partial<TextOverlay>) => void;
+  setSubtitle: (text: Partial<TextOverlay>) => void;
+  setTextPreset: (preset: TextPreset) => void; // Restored
   setExportPreset: (preset: ExportPresetKey) => void;
   resetEditor: () => void;
 }
@@ -50,11 +76,14 @@ const defaultSubtitle: TextOverlay = {
   type: "subtitle",
 };
 
-const defaultBackground: BackgroundConfig = {
-  type: "gradient",
-  color1: "#1a1a2e",
-  color2: "#16213e",
+const defaultBackground: Background = {
+  type: "gradient", // Base
+  style: "none", // Style
+  color1: "#18181b", // zinc-950
+  color2: "#27272a", // zinc-800
   angle: 135,
+  noise: 0,
+  pattern: "none",
 };
 
 export const useEditorStore = create<EditorState>((set) => ({

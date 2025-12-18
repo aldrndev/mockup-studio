@@ -1,4 +1,4 @@
-import { useRef, useMemo, useCallback } from "react";
+import { useRef, useMemo, useCallback, useEffect, useState } from "react";
 import {
   Stage,
   Layer,
@@ -394,10 +394,17 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
         }}
       >
         <Layer>
-          {background.type === "gradient" ? (
+          {/* BACKGROUND RENDERER */}
+          {background.type === "solid" && (
             <Rect
-              x={0}
-              y={0}
+              width={stageWidth}
+              height={stageHeight}
+              fill={background.color1}
+            />
+          )}
+
+          {background.type === "gradient" && (
+            <Rect
               width={stageWidth}
               height={stageHeight}
               fillLinearGradientStartPoint={{ x: 0, y: 0 }}
@@ -412,15 +419,65 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
                 background.color2,
               ]}
             />
-          ) : (
+          )}
+
+          {/* STYLE LAYER - Additive Lighting Effects */}
+          {background.style === "radial" && (
             <Rect
-              x={0}
-              y={0}
               width={stageWidth}
               height={stageHeight}
-              fill={background.color1}
+              fillRadialGradientStartPoint={{
+                x: stageWidth / 2,
+                y: stageHeight / 2,
+              }}
+              fillRadialGradientEndPoint={{
+                x: stageWidth / 2,
+                y: stageHeight / 2,
+              }}
+              fillRadialGradientStartRadius={0}
+              fillRadialGradientEndRadius={
+                Math.max(stageWidth, stageHeight) * 0.8
+              }
+              fillRadialGradientColorStops={[
+                0,
+                "rgba(255,255,255,0.1)", // Center lighting (subtle)
+                1,
+                "rgba(0,0,0,0.3)", // Edge darkening (vignette)
+              ]}
             />
           )}
+
+          {background.style === "spotlight" && (
+            <Rect
+              width={stageWidth}
+              height={stageHeight}
+              fillRadialGradientStartPoint={{ x: stageWidth / 2, y: 0 }}
+              fillRadialGradientEndPoint={{ x: stageWidth / 2, y: 0 }}
+              fillRadialGradientStartRadius={0}
+              fillRadialGradientEndRadius={stageHeight * 1.2}
+              fillRadialGradientColorStops={[
+                0,
+                "rgba(255,255,255,0.15)", // Top lighting
+                1,
+                "transparent",
+              ]}
+            />
+          )}
+
+          {/* OVERLAYS */}
+          {/* We need to use images for noise/pattern. 
+              Since we provided the util but can't easily use async in render loop here without state,
+              we'll assume for this iteration we might need a quick useEffect wrapper or just use CSS for preview
+              BUT requirement says "Export EXACTLY as previewed". So it MUST be on canvas. 
+              
+              I will add a simple useEffect to load these patterns into state in the component.
+          */}
+          <BackgroundOverlays
+            stageWidth={stageWidth}
+            stageHeight={stageHeight}
+            opacity={background.noise}
+            pattern={background.pattern}
+          />
         </Layer>
 
         <Layer x={deviceX} y={deviceY}>
@@ -511,5 +568,66 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
         </Layer>
       </Stage>
     </div>
+  );
+}
+
+import {
+  createNoiseImage,
+  createDotPattern,
+  createGridPattern,
+} from "../utils/backgroundPatterns";
+
+// Subcomponent for handling async pattern loading
+function BackgroundOverlays({
+  stageWidth,
+  stageHeight,
+  opacity,
+  pattern,
+}: {
+  stageWidth: number;
+  stageHeight: number;
+  opacity: number;
+  pattern: string;
+}) {
+  const [noiseImg, setNoiseImg] = useState<HTMLImageElement | null>(null);
+  const [patternImg, setPatternImg] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    createNoiseImage().then(setNoiseImg);
+  }, []);
+
+  useEffect(() => {
+    if (pattern === "dots") {
+      createDotPattern().then(setPatternImg);
+    } else if (pattern === "grid") {
+      createGridPattern().then(setPatternImg);
+    } else {
+      setPatternImg(null);
+    }
+  }, [pattern]);
+
+  return (
+    <>
+      {/* Pattern Layer */}
+      {pattern !== "none" && patternImg && (
+        <Rect
+          width={stageWidth}
+          height={stageHeight}
+          fillPatternImage={patternImg}
+          fillPatternRepeat="repeat"
+          opacity={0.3} // Increased from 0.05 to 0.3 for visibility (30%)
+        />
+      )}
+      {/* Noise Layer */}
+      {opacity > 0 && noiseImg && (
+        <Rect
+          width={stageWidth}
+          height={stageHeight}
+          fillPatternImage={noiseImg}
+          fillPatternRepeat="repeat"
+          opacity={opacity}
+        />
+      )}
+    </>
   );
 }

@@ -1,11 +1,13 @@
 import { useRef } from "react";
 import type Konva from "konva";
-import { UploadZone } from "./components/UploadZone";
-import { DeviceSelector } from "./components/DeviceSelector";
-import { BackgroundPicker } from "./components/BackgroundPicker";
-import { TextEditor } from "./components/TextEditor";
-import { CanvasStage } from "./components/CanvasStage";
-import { ExportPanel } from "./components/ExportPanel";
+import {
+  UploadZone,
+  DeviceSelector,
+  BackgroundPicker,
+  TextEditor,
+  CanvasStage,
+  ExportPanel,
+} from "./components";
 
 function App() {
   const stageRef = useRef<Konva.Stage>(null);
