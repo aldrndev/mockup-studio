@@ -4,7 +4,9 @@ import { fileToDataUrl } from "../utils/loadImage";
 
 export function UploadZone() {
   const [isDragging, setIsDragging] = useState(false);
-  const { screenshot, setScreenshot } = useEditorStore();
+  const { frames, activeFrameId, setScreenshot } = useEditorStore();
+  const activeFrame = frames.find((c) => c.id === activeFrameId) || frames[0];
+  const screenshot = activeFrame.screenshot;
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -43,7 +45,7 @@ export function UploadZone() {
   return (
     <div>
       <div className="flex justify-between items-center mb-2">
-        <span className="section-title !mb-0">Screenshot</span>
+        <span className="section-title !mb-2">Screenshot</span>
         {screenshot && (
           <button onClick={() => setScreenshot(null)} className="text-link">
             Clear

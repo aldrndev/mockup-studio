@@ -7,6 +7,8 @@ import {
   TextEditor,
   CanvasStage,
   ExportPanel,
+  CanvasSelector,
+  FrameTuner,
 } from "./components";
 
 function App() {
@@ -54,6 +56,10 @@ function App() {
           </div>
 
           <div className="panel-section">
+            <FrameTuner />
+          </div>
+
+          <div className="panel-section">
             <span className="section-title">Background</span>
             <BackgroundPicker />
           </div>
@@ -72,9 +78,14 @@ function App() {
       </aside>
 
       {/* CENTER - Canvas (Preview Only, No Scroll) */}
-      <main className="flex-1 h-full relative overflow-hidden bg-black/20 canvas-container">
-        <div className="absolute inset-0 grid place-items-center p-8">
+      <main className="flex-1 h-full relative overflow-hidden bg-black/20 canvas-container flex flex-col">
+        <div className="flex-1 w-full grid place-items-center p-8 overflow-hidden">
           <CanvasStage stageRef={stageRef} />
+        </div>
+
+        {/* Canvas Sequence Selector (Floating Bottom) */}
+        <div className="w-full pb-6 z-20 flex justify-center">
+          <CanvasSelector />
         </div>
       </main>
     </div>

@@ -15,7 +15,6 @@ const deviceMetas: Record<DeviceType, DeviceMeta> = {
 };
 
 interface CanvasRendererState {
-  deviceMeta: DeviceMeta;
   screenshotImage: HTMLImageElement | null;
   isLoading: boolean;
   error: string | null;
@@ -25,48 +24,58 @@ export function useCanvasRenderer(
   deviceType: DeviceType,
   screenshotSrc: string | null
 ) {
+  // Derive deviceMeta directly from prop, no need for state
+  const deviceMeta = deviceMetas[deviceType];
+
   const [state, setState] = useState<CanvasRendererState>({
-    deviceMeta: deviceMetas[deviceType],
     screenshotImage: null,
     isLoading: false,
     error: null,
   });
 
   useEffect(() => {
-    setState((prev) => ({
-      ...prev,
-      deviceMeta: deviceMetas[deviceType],
-    }));
-  }, [deviceType]);
-
-  useEffect(() => {
     if (!screenshotSrc) {
-      setState((prev) => ({
-        ...prev,
-        screenshotImage: null,
-        isLoading: false,
-        error: null,
-      }));
+      // Only reset if we have an image currently
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setState((prev) => {
+        if (!prev.screenshotImage && !prev.isLoading && !prev.error)
+          return prev;
+        return {
+          screenshotImage: null,
+          isLoading: false,
+          error: null,
+        };
+      });
       return;
     }
 
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
+    let isMounted = true;
+
     loadImage(screenshotSrc)
       .then((img) => {
-        setState((prev) => ({
-          ...prev,
-          screenshotImage: img,
-          isLoading: false,
-        }));
+        if (isMounted) {
+          setState({
+            screenshotImage: img,
+            isLoading: false,
+            error: null,
+          });
+        }
       })
       .catch((err) => {
-        setState((prev) => ({
-          ...prev,
-          error: err.message,
-          isLoading: false,
-        }));
+        if (isMounted) {
+          setState({
+            screenshotImage: null,
+            isLoading: false,
+            error: err.message,
+          });
+        }
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, [screenshotSrc]);
 
   const getDeviceMeta = useCallback(
@@ -75,6 +84,7 @@ export function useCanvasRenderer(
   );
 
   return {
+    deviceMeta,
     ...state,
     getDeviceMeta,
   };
