@@ -34,8 +34,8 @@ function Slider({
           <Icon size={14} className="text-zinc-500" />
           <span className="text-[11px] font-medium text-zinc-400">{label}</span>
         </div>
-        <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded text-right min-w-[3rem]">
-          {value}
+        <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded text-right min-w-[3.5rem] truncate">
+          {Number.isInteger(value) ? value : value.toFixed(1)}
           {unit}
         </span>
       </div>
