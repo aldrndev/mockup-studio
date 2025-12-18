@@ -3,11 +3,9 @@ import type Konva from "konva";
 export function exportCanvas(
   stage: Konva.Stage,
   width: number,
-  height: number,
   filename?: string
 ): void {
   const originalWidth = stage.width();
-  const originalHeight = stage.height();
   const scale = width / originalWidth;
 
   const dataUrl = stage.toDataURL({
@@ -26,8 +24,7 @@ export function exportCanvas(
 
 export async function exportCanvasAsBlob(
   stage: Konva.Stage,
-  width: number,
-  _height: number
+  width: number
 ): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const originalWidth = stage.width();

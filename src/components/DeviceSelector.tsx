@@ -12,7 +12,7 @@ export function DeviceSelector() {
   const { deviceType, setDeviceType } = useEditorStore();
 
   return (
-    <div className="segmented-control">
+    <div className="segmented-control !mt-1">
       {devices.map((d) => (
         <button
           key={d.type}

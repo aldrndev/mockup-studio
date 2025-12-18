@@ -1,4 +1,4 @@
-export function createNoiseImage(opacity = 0.05): Promise<HTMLImageElement> {
+export function createNoiseImage(): Promise<HTMLImageElement> {
   return new Promise((resolve) => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -31,9 +31,9 @@ export function createNoiseImage(opacity = 0.05): Promise<HTMLImageElement> {
   });
 }
 
-export function createDotPattern(
-  color = "rgba(255,255,255,0.1)"
-): Promise<HTMLImageElement> {
+export const createDotPattern = (
+  opacity: number = 0.3
+): Promise<HTMLImageElement> => {
   return new Promise((resolve) => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -42,6 +42,7 @@ export function createDotPattern(
     canvas.height = size;
 
     if (ctx) {
+      const color = `rgba(255,255,255,${opacity})`;
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(2, 2, 1, 0, Math.PI * 2);
@@ -52,7 +53,7 @@ export function createDotPattern(
     img.src = canvas.toDataURL();
     img.onload = () => resolve(img);
   });
-}
+};
 
 export function createGridPattern(
   color = "rgba(255,255,255,0.05)"

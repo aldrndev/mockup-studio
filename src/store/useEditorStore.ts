@@ -42,24 +42,63 @@ export interface TextOverlay {
 // Text Presets (Restored)
 export type TextPreset = "appstore" | "startup" | "bold";
 
-interface EditorState {
-  // Canvas State
+export type CutPreset = "even" | "overlap" | "hero" | "diagonal";
+
+// Editor Modes
+export type EditorMode = "standard" | "custom";
+
+export interface Frame {
+  id: string;
   screenshot: string | null;
-  deviceType: DeviceType;
-  background: Background;
   headline: TextOverlay;
   subtitle: TextOverlay;
-  textPreset: TextPreset; // Restored
+  scale: number;
+  rotation: number;
+  offsetX: number;
+  offsetY: number;
+  showDevice: boolean; // New: Controls if device body is rendered
+}
+
+interface EditorState {
+  // Global Shared State
+  deviceType: DeviceType;
+  background: Background;
+  textPreset: TextPreset;
+  cutPreset: CutPreset;
   exportPreset: ExportPresetKey;
+  editorMode: EditorMode; // New: Controls manual/auto workflow
+
+  // Frame Sequence State
+  frames: Frame[];
+  activeFrameId: string;
 
   // Actions
-  setScreenshot: (src: string | null) => void;
+  // Global
   setDeviceType: (type: DeviceType) => void;
   setBackground: (bg: Partial<Background>) => void;
+  setTextPreset: (preset: TextPreset) => void;
+  setCutPreset: (preset: CutPreset) => void;
+  setExportPreset: (preset: ExportPresetKey) => void;
+  setEditorMode: (mode: EditorMode) => void; // New action
+
+  // Frame Management
+  addFrame: () => void;
+  removeFrame: (id: string) => void;
+  setActiveFrame: (id: string) => void;
+  reorderFrame: (fromIndex: number, toIndex: number) => void;
+
+  // Active Frame Actions (Proxies)
+  setScreenshot: (src: string | null) => void;
   setHeadline: (text: Partial<TextOverlay>) => void;
   setSubtitle: (text: Partial<TextOverlay>) => void;
-  setTextPreset: (preset: TextPreset) => void; // Restored
-  setExportPreset: (preset: ExportPresetKey) => void;
+  setFrameProperties: (props: {
+    scale?: number;
+    rotation?: number;
+    offsetX?: number;
+    offsetY?: number;
+  }) => void;
+  toggleFrameDevice: (id: string) => void; // New action to show/hide device manually
+
   resetEditor: () => void;
 }
 
@@ -67,8 +106,8 @@ const defaultHeadline: TextOverlay = {
   id: "headline",
   text: "",
   x: 0.5,
-  y: 0.07, // Aligned to top of dedicated zone
-  fontSize: 64, // Larger, dominant
+  y: 0.07,
+  fontSize: 64,
   fontFamily: "Poppins",
   fontWeight: 800,
   fill: "#ffffff",
@@ -79,52 +118,56 @@ const defaultSubtitle: TextOverlay = {
   id: "subtitle",
   text: "",
   x: 0.5,
-  y: 0.14, // Clearly separated from headline
-  fontSize: 32, // Readable 2-3 lines
+  y: 0.14,
+  fontSize: 32,
   fontFamily: "Inter",
-  fontWeight: 500, // Medium weight for readability
-  fill: "#e4e4e7", // Zinc-200 for slight contrast
+  fontWeight: 500,
+  fill: "#e4e4e7",
   type: "subtitle",
 };
 
 const defaultBackground: Background = {
-  type: "gradient", // Base
-  style: "none", // Style
-  color1: "#27272a", // Zinc-800 (Charcoal Preset Base)
-  color2: "#09090b", // Zinc-950
+  type: "gradient",
+  style: "none",
+  color1: "#27272a",
+  color2: "#09090b",
   angle: 135,
   noise: 0,
   pattern: "none",
-  vignette: true, // Mandatory Default ON
+  vignette: true,
   backdrop: false,
 };
 
+const initialFrameId = crypto.randomUUID();
+
 export const useEditorStore = create<EditorState>((set) => ({
-  screenshot: null,
   deviceType: "iphone",
   background: defaultBackground,
-  headline: defaultHeadline,
-  subtitle: defaultSubtitle,
   textPreset: "appstore",
+  cutPreset: "even",
   exportPreset: "appstore",
+  editorMode: "standard", // Default to Standard (Auto)
 
-  setScreenshot: (screenshot) => set({ screenshot }),
+  frames: [
+    {
+      id: initialFrameId,
+      screenshot: null,
+      headline: defaultHeadline,
+      subtitle: defaultSubtitle,
+      scale: 1,
+      rotation: 0,
+      offsetX: 0,
+      offsetY: 0,
+      showDevice: true, // Auto-show for initial
+    },
+  ],
+  activeFrameId: initialFrameId,
 
   setDeviceType: (deviceType) => set({ deviceType }),
 
   setBackground: (background) =>
     set((state) => ({
       background: { ...state.background, ...background },
-    })),
-
-  setHeadline: (headline) =>
-    set((state) => ({
-      headline: { ...state.headline, ...headline },
-    })),
-
-  setSubtitle: (subtitle) =>
-    set((state) => ({
-      subtitle: { ...state.subtitle, ...subtitle },
     })),
 
   setTextPreset: (preset) => {
@@ -176,23 +219,146 @@ export const useEditorStore = create<EditorState>((set) => ({
       },
     };
 
-    set((state) => ({
-      textPreset: preset,
-      headline: { ...state.headline, ...presets[preset].headline },
-      subtitle: { ...state.subtitle, ...presets[preset].subtitle },
-    }));
+    set((state) => {
+      // Update ALL frames with new text style presets
+      const updatedFrames = state.frames.map((frame) => ({
+        ...frame,
+        headline: { ...frame.headline, ...presets[preset].headline },
+        subtitle: { ...frame.subtitle, ...presets[preset].subtitle },
+      }));
+
+      return {
+        textPreset: preset,
+        frames: updatedFrames,
+      };
+    });
   },
 
+  setCutPreset: (preset) => set({ cutPreset: preset }),
   setExportPreset: (preset) => set({ exportPreset: preset }),
+  setEditorMode: (mode) => set({ editorMode: mode }),
 
-  resetEditor: () =>
+  // Frame Management
+  addFrame: () =>
+    set((state) => {
+      if (state.frames.length >= 8) return state; // Guardrail
+      const newId = crypto.randomUUID();
+      const showDevice = state.editorMode === "standard"; // Auto-show only in Standard
+
+      return {
+        frames: [
+          ...state.frames,
+          {
+            id: newId,
+            screenshot: null,
+            headline: {
+              ...defaultHeadline,
+              ...state.frames[0].headline,
+              text: "",
+            }, // Copy style but clear text
+            subtitle: {
+              ...defaultSubtitle,
+              ...state.frames[0].subtitle,
+              text: "",
+            },
+            scale: 1,
+            rotation: 0,
+            offsetX: 0,
+            offsetY: 0,
+            showDevice: showDevice,
+          },
+        ],
+        activeFrameId: newId, // Switch to new frame
+      };
+    }),
+
+  removeFrame: (id) =>
+    set((state) => {
+      if (state.frames.length <= 1) return state; // Guardrail
+      const newFrames = state.frames.filter((c) => c.id !== id);
+      // If active frame removed, switch to last one
+      const newActiveId =
+        state.activeFrameId === id
+          ? newFrames[newFrames.length - 1].id
+          : state.activeFrameId;
+      return {
+        frames: newFrames,
+        activeFrameId: newActiveId,
+      };
+    }),
+
+  setActiveFrame: (id) => set({ activeFrameId: id }),
+
+  reorderFrame: (fromIndex, toIndex) =>
+    set((state) => {
+      const newFrames = [...state.frames];
+      const [moved] = newFrames.splice(fromIndex, 1);
+      newFrames.splice(toIndex, 0, moved);
+      return { frames: newFrames };
+    }),
+
+  // Active Frame Actions (Proxies)
+  setScreenshot: (src) =>
+    set((state) => ({
+      frames: state.frames.map((c) =>
+        c.id === state.activeFrameId ? { ...c, screenshot: src } : c
+      ),
+    })),
+
+  setHeadline: (text) =>
+    set((state) => ({
+      frames: state.frames.map((c) =>
+        c.id === state.activeFrameId
+          ? { ...c, headline: { ...c.headline, ...text } }
+          : c
+      ),
+    })),
+
+  setSubtitle: (text) =>
+    set((state) => ({
+      frames: state.frames.map((c) =>
+        c.id === state.activeFrameId
+          ? { ...c, subtitle: { ...c.subtitle, ...text } }
+          : c
+      ),
+    })),
+
+  setFrameProperties: (props) =>
+    set((state) => ({
+      frames: state.frames.map((c) =>
+        c.id === state.activeFrameId ? { ...c, ...props } : c
+      ),
+    })),
+
+  toggleFrameDevice: (id) =>
+    set((state) => ({
+      frames: state.frames.map((c) =>
+        c.id === id ? { ...c, showDevice: !c.showDevice } : c
+      ),
+    })),
+
+  resetEditor: () => {
+    const newId = crypto.randomUUID();
     set({
-      screenshot: null,
       deviceType: "iphone",
       background: defaultBackground,
-      headline: defaultHeadline,
-      subtitle: defaultSubtitle,
       textPreset: "appstore",
       exportPreset: "appstore",
-    }),
+      editorMode: "standard",
+      frames: [
+        {
+          id: newId,
+          screenshot: null,
+          headline: defaultHeadline,
+          subtitle: defaultSubtitle,
+          scale: 1,
+          rotation: 0,
+          offsetX: 0,
+          offsetY: 0,
+          showDevice: true,
+        },
+      ],
+      activeFrameId: newId,
+    });
+  },
 }));

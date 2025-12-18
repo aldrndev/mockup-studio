@@ -7,10 +7,12 @@ import {
   Text,
   Image as KonvaImage,
   Circle,
+  Line,
 } from "react-konva";
 import type Konva from "konva";
 import { useEditorStore } from "../store/useEditorStore";
 import { useCanvasRenderer } from "../canvas/useCanvasRenderer";
+import type { Frame } from "../store/useEditorStore";
 import { fitImageToMask } from "../canvas/fitImageToMask";
 import type { DeviceMeta, DeviceType } from "../types/device";
 
@@ -321,69 +323,71 @@ function MacBookOverlay({ meta }: { meta: DeviceMeta }) {
   );
 }
 
+import { calculateFrameLayout } from "../utils/frameLayout";
+
 export function CanvasStage({ stageRef }: CanvasStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { screenshot, deviceType, background, headline, subtitle } =
-    useEditorStore();
-  const { deviceMeta, screenshotImage } = useCanvasRenderer(
+  const {
+    frames,
+    activeFrameId,
     deviceType,
-    screenshot
-  );
+    background,
+    cutPreset,
+    setActiveFrame,
+  } = useEditorStore();
 
+  const { deviceMeta } = useCanvasRenderer(deviceType, null);
   const isDesktop = deviceType === "desktop";
 
   // Canvas dimensions - device + padding for text space
   const paddingX = 80;
   const paddingTop = 320; // Dedicated marketing text zone
   const paddingBottom = 80;
-
-  const stageWidth =
+  const baseFrameWidth =
     deviceMeta.frameWidth + paddingX * 2 + (isDesktop ? 80 : 0);
   const stageHeight = deviceMeta.frameHeight + paddingTop + paddingBottom;
 
-  // Scale to fit max 420px width (except desktop)
-  const maxDisplayWidth = isDesktop ? 600 : 420;
-  const maxDisplayHeight = 650; // Increased to accommodate taller aspect ratio
-  const scale = Math.min(
-    maxDisplayWidth / stageWidth,
-    maxDisplayHeight / stageHeight,
-    1
+  // Calculate Layout
+  const layout = useMemo(
+    () => calculateFrameLayout(frames, cutPreset, baseFrameWidth, stageHeight),
+    [frames, cutPreset, baseFrameWidth, stageHeight]
   );
-  const displayWidth = stageWidth * scale;
+
+  const totalStageWidth = layout.totalWidth;
+
+  const maxDisplayHeight = 650;
+  const scale = Math.min(maxDisplayHeight / stageHeight, 1);
+
+  const displayWidth = totalStageWidth * scale; // Full strip width
   const displayHeight = stageHeight * scale;
 
-  const screenshotFit = useMemo(() => {
-    if (!screenshotImage) return null;
-    return fitImageToMask(
-      screenshotImage.width,
-      screenshotImage.height,
-      deviceMeta.screen
-    );
-  }, [screenshotImage, deviceMeta.screen]);
-
   const handleTextDragEnd = useCallback(
-    (type: "headline" | "subtitle", e: Konva.KonvaEventObject<DragEvent>) => {
+    (
+      canvasId: string,
+      type: "headline" | "subtitle",
+      e: Konva.KonvaEventObject<DragEvent>
+    ) => {
       const node = e.target;
-      const x = node.x() / stageWidth;
-      const y = node.y() / stageHeight;
+      const frameLayout = layout.frames.find((f) => f.id === canvasId);
+      if (!frameLayout) return;
+
+      const relativeX = node.x() / frameLayout.width;
+      const relativeY = node.y() / stageHeight;
+
       if (type === "headline") {
-        useEditorStore.getState().setHeadline({ x, y });
+        useEditorStore.getState().setHeadline({ x: relativeX, y: relativeY });
       } else {
-        useEditorStore.getState().setSubtitle({ x, y });
+        useEditorStore.getState().setSubtitle({ x: relativeX, y: relativeY });
       }
     },
-    [stageWidth, stageHeight]
+    [layout, stageHeight]
   );
 
-  // Center device horizontally, position with space for text above
-  const deviceX = (stageWidth - deviceMeta.frameWidth) / 2;
-  const deviceY = paddingTop;
-
   return (
-    <div ref={containerRef} className="canvas-frame p-2">
+    <div ref={containerRef} className="canvas-frame p-2 overflow-hidden">
       <Stage
         ref={stageRef}
-        width={stageWidth}
+        width={totalStageWidth}
         height={stageHeight}
         scaleX={scale}
         scaleY={scale}
@@ -391,13 +395,31 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
           width: displayWidth,
           height: displayHeight,
           borderRadius: "8px",
+          maxWidth: "100%",
+          maxHeight: "100%",
+        }}
+        onMouseDown={(e) => {
+          const stage = e.target.getStage();
+          if (!stage) return;
+          const ptr = stage.getPointerPosition();
+          if (!ptr) return;
+
+          // Improved Hit Testing for Variable Widths
+          const x = (ptr.x - stage.x()) / stage.scaleX();
+          const clickedFrame = layout.frames.find(
+            (f) => x >= f.x && x < f.x + f.width
+          );
+
+          if (clickedFrame && clickedFrame.id !== activeFrameId) {
+            setActiveFrame(clickedFrame.id);
+          }
         }}
       >
         <Layer>
-          {/* BACKGROUND RENDERER */}
+          {/* 1. MASTER BACKGROUND (Spans layout) */}
           {background.type === "solid" && (
             <Rect
-              width={stageWidth}
+              width={totalStageWidth}
               height={stageHeight}
               fill={background.color1}
             />
@@ -405,11 +427,13 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
 
           {background.type === "gradient" && (
             <Rect
-              width={stageWidth}
+              width={totalStageWidth}
               height={stageHeight}
               fillLinearGradientStartPoint={{ x: 0, y: 0 }}
               fillLinearGradientEndPoint={{
-                x: stageWidth * Math.cos((background.angle * Math.PI) / 180),
+                x:
+                  totalStageWidth *
+                  Math.cos((background.angle * Math.PI) / 180),
                 y: stageHeight * Math.sin((background.angle * Math.PI) / 180),
               }}
               fillLinearGradientColorStops={[
@@ -421,57 +445,53 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
             />
           )}
 
-          {/* STYLE LAYER - Additive Lighting Effects */}
-          {/* STYLE LAYER - Additive Lighting Effects */}
-          {/* 1. Vignette (Darkens edges) */}
           {background.vignette && (
             <Rect
-              width={stageWidth}
+              width={totalStageWidth}
               height={stageHeight}
               fillRadialGradientStartPoint={{
-                x: stageWidth / 2,
+                x: totalStageWidth / 2,
                 y: stageHeight / 2,
               }}
               fillRadialGradientEndPoint={{
-                x: stageWidth / 2,
+                x: totalStageWidth / 2,
                 y: stageHeight / 2,
               }}
               fillRadialGradientStartRadius={
-                Math.min(stageWidth, stageHeight) * 0.4
+                Math.min(totalStageWidth, stageHeight) * 0.4
               }
               fillRadialGradientEndRadius={
-                Math.max(stageWidth, stageHeight) * 0.9
+                Math.max(totalStageWidth, stageHeight) * 0.9
               }
               fillRadialGradientColorStops={[
                 0,
                 "transparent",
                 1,
-                "rgba(0,0,0,0.2)", // Subtle edge darkening (20%)
+                "rgba(0,0,0,0.2)",
               ]}
               listening={false}
             />
           )}
 
-          {/* 2. Lighting (Radial / Spotlight / Beam) */}
           {background.style === "radial" && (
             <Rect
-              width={stageWidth}
+              width={totalStageWidth}
               height={stageHeight}
               fillRadialGradientStartPoint={{
-                x: stageWidth / 2,
+                x: totalStageWidth / 2,
                 y: stageHeight / 2,
               }}
               fillRadialGradientEndPoint={{
-                x: stageWidth / 2,
+                x: totalStageWidth / 2,
                 y: stageHeight / 2,
               }}
               fillRadialGradientStartRadius={0}
               fillRadialGradientEndRadius={
-                Math.max(stageWidth, stageHeight) * 0.8
+                Math.max(totalStageWidth, stageHeight) * 0.8
               }
               fillRadialGradientColorStops={[
                 0,
-                "rgba(255,255,255,0.12)", // Soft center light
+                "rgba(255,255,255,0.12)",
                 1,
                 "transparent",
               ]}
@@ -481,15 +501,15 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
 
           {background.style === "spotlight" && (
             <Rect
-              width={stageWidth}
+              width={totalStageWidth}
               height={stageHeight}
-              fillRadialGradientStartPoint={{ x: stageWidth / 2, y: 0 }}
-              fillRadialGradientEndPoint={{ x: stageWidth / 2, y: 0 }}
+              fillRadialGradientStartPoint={{ x: totalStageWidth / 2, y: 0 }}
+              fillRadialGradientEndPoint={{ x: totalStageWidth / 2, y: 0 }}
               fillRadialGradientStartRadius={0}
               fillRadialGradientEndRadius={stageHeight * 1.2}
               fillRadialGradientColorStops={[
                 0,
-                "rgba(255,255,255,0.15)", // Top lighting
+                "rgba(255,255,255,0.15)",
                 1,
                 "transparent",
               ]}
@@ -499,17 +519,17 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
 
           {background.style === "beam" && (
             <Rect
-              x={stageWidth / 2 - stageWidth * 0.15} // Center strip
+              x={totalStageWidth / 2 - totalStageWidth * 0.15}
               y={0}
-              width={stageWidth * 0.3} // ~30% width
+              width={totalStageWidth * 0.3}
               height={stageHeight}
               fillLinearGradientStartPoint={{ x: 0, y: 0 }}
-              fillLinearGradientEndPoint={{ x: stageWidth * 0.3, y: 0 }} // Horizontal gradient across strip
+              fillLinearGradientEndPoint={{ x: totalStageWidth * 0.3, y: 0 }}
               fillLinearGradientColorStops={[
                 0,
                 "transparent",
                 0.5,
-                "rgba(255,255,255,0.08)", // Very subtle vertical beam
+                "rgba(255,255,255,0.08)",
                 1,
                 "transparent",
               ]}
@@ -517,53 +537,212 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
             />
           )}
 
-          {/* 3. Backdrop Panel (Behind Device) */}
-          {background.backdrop && (
-            <Rect
-              x={deviceX - 20}
-              y={deviceY - 20}
-              width={deviceMeta.frameWidth + 40}
-              height={deviceMeta.frameHeight + 40}
-              fill="rgba(255,255,255,0.08)" // Glassy panel
-              cornerRadius={deviceMeta.screen.radius + 32} // Adaptive radius
-              shadowColor="black"
-              shadowBlur={30}
-              shadowOpacity={0.2}
-              shadowOffsetY={10}
-            />
-          )}
-
-          {/* OVERLAYS */}
-          {/* We need to use images for noise/pattern. 
-              Since we provided the util but can't easily use async in render loop here without state,
-              we'll assume for this iteration we might need a quick useEffect wrapper or just use CSS for preview
-              BUT requirement says "Export EXACTLY as previewed". So it MUST be on canvas. 
-              
-              I will add a simple useEffect to load these patterns into state in the component.
-          */}
           <BackgroundOverlays
-            stageWidth={stageWidth}
+            stageWidth={totalStageWidth}
             stageHeight={stageHeight}
             opacity={background.noise}
             pattern={background.pattern}
           />
         </Layer>
 
-        <Layer x={deviceX} y={deviceY}>
+        {/* FRAMES */}
+        <Layer>
+          {layout.frames.map((frameLayout) => {
+            const frame = frames.find((f) => f.id === frameLayout.id);
+            if (!frame) return null;
+
+            return (
+              <FrameContent
+                key={frame.id}
+                frame={frame}
+                isActive={frame.id === activeFrameId}
+                deviceType={deviceType}
+                x={frameLayout.x}
+                width={frameLayout.width}
+                height={frameLayout.height}
+                stageHeight={stageHeight}
+                backdrop={background.backdrop}
+                onTextDragEnd={handleTextDragEnd}
+              />
+            );
+          })}
+        </Layer>
+
+        {/* GUIDES OVERLAY (Cut Lines) */}
+        <Layer listening={false}>
+          {layout.frames.map((frameLayout, i) => {
+            // Don't draw line after the last frame
+            if (i === layout.frames.length - 1) return null;
+            // Draw line at the END of this frame (x + width)
+            const lineX = frameLayout.x + frameLayout.width;
+
+            return (
+              <Group key={`guide-${i}`}>
+                {/* Dashed Cut Line */}
+                <Line
+                  points={[lineX, 0, lineX, stageHeight]}
+                  stroke="rgba(255,255,255,0.5)"
+                  strokeWidth={2}
+                  dash={[8, 8]}
+                />
+                {/* Scissor Icon (Visual indicator) */}
+                <Circle
+                  x={lineX}
+                  y={40}
+                  radius={12}
+                  fill="rgba(0,0,0,0.5)"
+                  stroke="white"
+                  strokeWidth={1.5}
+                />
+                {/* Text Label */}
+                <Text
+                  x={lineX - 20}
+                  y={15}
+                  text="CUT"
+                  fontSize={10}
+                  fill="rgba(255,255,255,0.8)"
+                  fontFamily="Inter"
+                  width={40}
+                  align="center"
+                />
+              </Group>
+            );
+          })}
+        </Layer>
+      </Stage>
+    </div>
+  );
+}
+
+import {
+  createNoiseImage,
+  createDotPattern,
+  createGridPattern,
+} from "../utils/backgroundPatterns";
+
+function FrameContent({
+  frame,
+  isActive,
+  deviceType,
+  x,
+  width,
+  stageHeight,
+  backdrop,
+  onTextDragEnd,
+}: {
+  frame: Frame;
+  width: number;
+  height: number;
+  x: number;
+  deviceType: DeviceType;
+  isActive: boolean;
+  stageHeight: number;
+  backdrop?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onTextDragEnd: (id: string, type: "headline" | "subtitle", e: any) => void;
+}) {
+  const { screenshotImage, deviceMeta } = useCanvasRenderer(
+    deviceType,
+    frame.screenshot
+  );
+
+  // Calculate centering within the frame
+  const deviceX = (width - deviceMeta.frameWidth) / 2;
+  const deviceY = 320;
+
+  // Calculate pivot point for rotation/scaling (Center of device)
+  const centerX = deviceX + deviceMeta.frameWidth / 2 + (frame.offsetX || 0);
+  const centerY = deviceY + deviceMeta.frameHeight / 2 + (frame.offsetY || 0);
+
+  const screenshotFit = useMemo(() => {
+    if (!screenshotImage) return null;
+    return fitImageToMask(
+      screenshotImage.width,
+      screenshotImage.height,
+      deviceMeta.screen
+    );
+  }, [screenshotImage, deviceMeta.screen]);
+
+  // Handle Device Drag
+  const handleDeviceDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
+    const node = e.target;
+    // Current position relative to the FrameContent group
+    const newX = node.x();
+    const newY = node.y();
+
+    // Calculate what the offset SHOULD be to achieve this X/Y
+    // centerX = baseCenterX + offsetX  =>  offsetX = centerX - baseCenterX
+    const baseCenterX = deviceX + deviceMeta.frameWidth / 2;
+    const baseCenterY = deviceY + deviceMeta.frameHeight / 2;
+
+    const newOffsetX = newX - baseCenterX;
+    const newOffsetY = newY - baseCenterY;
+
+    // Update store
+    useEditorStore.getState().setFrameProperties({
+      offsetX: newOffsetX,
+      offsetY: newOffsetY,
+    });
+  };
+
+  return (
+    <Group x={x} y={0}>
+      {/* Frame Border (Visualize selection) */}
+      {isActive && (
+        <Rect
+          width={width}
+          height={stageHeight}
+          stroke="#8b5cf6"
+          strokeWidth={4}
+          opacity={0.3}
+          listening={false}
+        />
+      )}
+
+      {/* Backdrop Panel */}
+      {backdrop && (
+        <Rect
+          x={deviceX - 20 + (frame.offsetX || 0)}
+          y={deviceY - 20 + (frame.offsetY || 0)}
+          width={deviceMeta.frameWidth + 40}
+          height={deviceMeta.frameHeight + 40}
+          fill="rgba(255,255,255,0.08)"
+          cornerRadius={deviceMeta.screen.radius + 32}
+          shadowColor="black"
+          shadowBlur={30}
+          shadowOpacity={0.2}
+          shadowOffsetY={10}
+        />
+      )}
+
+      {/* Device Body (Transformed) */}
+      {frame.showDevice !== false && (
+        <Group
+          x={centerX}
+          y={centerY}
+          scaleX={frame.scale}
+          scaleY={frame.scale}
+          rotation={frame.rotation}
+          offset={{
+            x: deviceMeta.frameWidth / 2,
+            y: deviceMeta.frameHeight / 2,
+          }}
+          draggable={isActive}
+          onDragEnd={handleDeviceDragEnd}
+          onDragStart={() => {
+            // Optional: Snap visual feedback or cursor change
+          }}
+        >
           <DeviceBody meta={deviceMeta} deviceType={deviceType} />
           <Group
-            clipFunc={(ctx) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            clipFunc={(ctx: any) => {
               const r = deviceMeta.screen.radius;
               const x = deviceMeta.screen.x;
               const y = deviceMeta.screen.y;
               const w = deviceMeta.screen.width;
               const h = deviceMeta.screen.height;
-              // Simple rounded rect for screen content
-              // Using helper or raw context
-              // Note: clipFunc context is raw 2D context
               ctx.beginPath();
-
-              // Helper: rounded rect
               ctx.moveTo(x + r, y);
               ctx.lineTo(x + w - r, y);
               ctx.quadraticCurveTo(x + w, y, x + w, y + r);
@@ -573,7 +752,6 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
               ctx.quadraticCurveTo(x, y + h, x, y + h - r);
               ctx.lineTo(x, y + r);
               ctx.quadraticCurveTo(x, y, x + r, y);
-
               ctx.closePath();
             }}
           >
@@ -595,58 +773,52 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
               />
             )}
           </Group>
-          {/* Overlay renders ON TOP of screenshot */}
           <DeviceOverlay meta={deviceMeta} deviceType={deviceType} />
-        </Layer>
+        </Group>
+      )}
 
-        {/* Text Layer - on top of everything */}
-        <Layer>
-          {headline.text && (
-            <Text
-              x={headline.x * stageWidth}
-              y={headline.y * stageHeight}
-              text={headline.text}
-              fontSize={headline.fontSize}
-              fontFamily={headline.fontFamily}
-              fontStyle={headline.fontWeight >= 700 ? "bold" : "normal"}
-              fill={headline.fill}
-              align="center"
-              draggable
-              onDragEnd={(e) => handleTextDragEnd("headline", e)}
-              onDragMove={(e) => {
-                e.target.offsetX(e.target.width() / 2);
-              }}
-            />
-          )}
-          {subtitle.text && (
-            <Text
-              x={subtitle.x * stageWidth}
-              y={subtitle.y * stageHeight}
-              text={subtitle.text}
-              fontSize={subtitle.fontSize}
-              fontFamily={subtitle.fontFamily}
-              fill={subtitle.fill}
-              align="center"
-              draggable
-              onDragEnd={(e) => handleTextDragEnd("subtitle", e)}
-              onDragMove={(e) => {
-                e.target.offsetX(e.target.width() / 2);
-              }}
-            />
-          )}
-        </Layer>
-      </Stage>
-    </div>
+      {/* Text Layer */}
+      <Group>
+        {frame.headline.text && (
+          <Text
+            x={frame.headline.x * width}
+            y={frame.headline.y * stageHeight}
+            text={frame.headline.text}
+            fontSize={frame.headline.fontSize}
+            fontFamily={frame.headline.fontFamily}
+            fontStyle={frame.headline.fontWeight >= 700 ? "bold" : "normal"}
+            fill={frame.headline.fill}
+            align="center"
+            width={width}
+            draggable={isActive}
+            onDragEnd={(e) => onTextDragEnd(frame.id, "headline", e)}
+            onDragMove={(e) => {
+              e.target.offsetX(e.target.width() / 2);
+            }}
+          />
+        )}
+        {frame.subtitle.text && (
+          <Text
+            x={frame.subtitle.x * width}
+            y={frame.subtitle.y * stageHeight}
+            text={frame.subtitle.text}
+            fontSize={frame.subtitle.fontSize}
+            fontFamily={frame.subtitle.fontFamily}
+            fill={frame.subtitle.fill}
+            align="center"
+            width={width}
+            draggable={isActive}
+            onDragEnd={(e) => onTextDragEnd(frame.id, "subtitle", e)}
+            onDragMove={(e) => {
+              e.target.offsetX(e.target.width() / 2);
+            }}
+          />
+        )}
+      </Group>
+    </Group>
   );
 }
 
-import {
-  createNoiseImage,
-  createDotPattern,
-  createGridPattern,
-} from "../utils/backgroundPatterns";
-
-// Subcomponent for handling async pattern loading
 function BackgroundOverlays({
   stageWidth,
   stageHeight,
@@ -671,23 +843,22 @@ function BackgroundOverlays({
     } else if (pattern === "grid") {
       createGridPattern().then(setPatternImg);
     } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPatternImg(null);
     }
   }, [pattern]);
 
   return (
     <>
-      {/* Pattern Layer */}
       {pattern !== "none" && patternImg && (
         <Rect
           width={stageWidth}
           height={stageHeight}
           fillPatternImage={patternImg}
           fillPatternRepeat="repeat"
-          opacity={0.3} // Increased from 0.05 to 0.3 for visibility (30%)
+          opacity={0.3}
         />
       )}
-      {/* Noise Layer */}
       {opacity > 0 && noiseImg && (
         <Rect
           width={stageWidth}

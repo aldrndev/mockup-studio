@@ -35,12 +35,12 @@ export function BackgroundPicker() {
   };
 
   return (
-    <div className="flex flex-col gap-8 py-2">
+    <div className="flex flex-col gap-6 py-2">
       {" "}
       {/* 32px gap between sections */}
       {/* 1. BASE LAYER */}
       <section>
-        <div className="flex items-center gap-2 mb-5 px-1">
+        <div className="flex items-center gap-2 !mb-2 !mt-1 px-1">
           {" "}
           {/* 20px bottom margin from title */}
           <div className="w-1 h-3 bg-white/40 rounded-full !mt-2 !mb-2" />
@@ -83,8 +83,8 @@ export function BackgroundPicker() {
           {/* 16px vertical spacing between groups */}
           {/* Custom Color Pickers */}
           <div className="flex items-center gap-3">
-            <div className="flex-1 space-y-2 !mt-2">
-              <label className="text-[10px] font-medium text-zinc-500 ml-1">
+            <div className="flex-1 space-y-2 !mt-4">
+              <label className="text-[10px] font-medium text-zinc-500">
                 Primary
               </label>
               <div className="relative group !mt-1">
@@ -104,8 +104,8 @@ export function BackgroundPicker() {
             </div>
 
             {background.type === "gradient" && (
-              <div className="flex-1 space-y-2 !mt-2">
-                <label className="text-[10px] font-medium text-zinc-500 ml-1">
+              <div className="flex-1 space-y-2 !mt-4">
+                <label className="text-[10px] font-medium text-zinc-500">
                   Secondary
                 </label>
                 <div className="relative group !mt-1">
@@ -127,8 +127,8 @@ export function BackgroundPicker() {
           </div>
           {/* Gradient Presets (New) */}
           {background.type === "gradient" && (
-            <div className="pt-2">
-              <label className="text-[10px] font-medium text-zinc-500 mb-2 block ml-1">
+            <div className="!mt-4">
+              <label className="!mb-1 text-[10px] font-medium text-zinc-500 block">
                 Curated Presets
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -138,7 +138,7 @@ export function BackgroundPicker() {
                     onClick={() =>
                       setBackground({ color1: preset.c1, color2: preset.c2 })
                     }
-                    className="h-8 rounded-lg border border-white/5 relative overflow-hidden group transition-all hover:scale-[1.02] hover:border-white/20"
+                    className="h-8 rounded-xl border border-white/5 relative overflow-hidden group transition-all hover:scale-[1.02] hover:border-white/20"
                     title={preset.name}
                   >
                     <div
@@ -187,7 +187,7 @@ export function BackgroundPicker() {
       <div className="h-px bg-zinc-800/50 w-full" />
       {/* 2. STYLE LAYER */}
       <section>
-        <div className="flex items-center gap-2 mb-5 px-1">
+        <div className="flex items-center gap-2 !mb-2  px-1">
           <div className="w-1 h-3 bg-violet-500/50 rounded-full !mb-2" />
           <h3 className="!mb-2 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
             Lighting Style
@@ -227,14 +227,14 @@ export function BackgroundPicker() {
       </section>
       {/* 2b. FINISHING (Vignette & Backdrop) */}
       <section>
-        <div className="flex items-center gap-2 mb-4 px-1">
+        <div className="flex items-center gap-2 !mb-2 px-1">
           <div className="w-1 h-3 bg-blue-500/50 rounded-full !mb-2" />
           <h3 className="!mb-2 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
             Finishing Touches
           </h3>
         </div>
 
-        <div className="space-y-3">
+        <div className="!space-y-2 bg-zinc-900/40 rounded-lg !p-2">
           {/* Vignette Toggle */}
           <div className="flex items-center justify-between p-1">
             <div className="flex items-center gap-2">
@@ -294,7 +294,7 @@ export function BackgroundPicker() {
       <div className="h-px bg-zinc-800/50 w-full" />
       {/* 3. TEXTURE LAYER */}
       <section>
-        <div className="flex items-center justify-between mb-5 px-1">
+        <div className="flex items-center justify-between !mb-3 px-1">
           <div className="flex items-center gap-2">
             <div
               className={`w-1 h-3 rounded-full transition-colors ${
@@ -321,7 +321,6 @@ export function BackgroundPicker() {
           <div className="animate-in fade-in slide-in-from-top-1 duration-200">
             {/* Pattern Selector */}
             <div className="mb-6">
-              {" "}
               {/* Spacing between groups */}
               <span className="!mb-1 !mt-1 text-[10px] font-medium text-zinc-500 ml-1 mb-2 block">
                 Pattern
@@ -334,6 +333,7 @@ export function BackgroundPicker() {
                 ].map((pat) => (
                   <button
                     key={pat.id}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     onClick={() => setBackground({ pattern: pat.id as any })}
                     className={`h-10 flex items-center justify-center gap-2 rounded-xl border transition-all px-2 ${
                       background.pattern === pat.id
