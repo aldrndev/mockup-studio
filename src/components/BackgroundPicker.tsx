@@ -13,8 +13,11 @@ import {
   ArrowDown,
   ArrowUpRight,
   ArrowDownRight,
+  Monitor,
+  ScanLine,
 } from "lucide-react";
 import type { BackgroundStyle } from "../store/useEditorStore";
+import { GRADIENT_PRESETS } from "../store/useEditorStore";
 
 export function BackgroundPicker() {
   const { background, setBackground } = useEditorStore();
@@ -32,7 +35,7 @@ export function BackgroundPicker() {
   };
 
   return (
-    <div className="flex flex-col gap-4 py-2">
+    <div className="flex flex-col gap-8 py-2">
       {" "}
       {/* 32px gap between sections */}
       {/* 1. BASE LAYER */}
@@ -78,13 +81,11 @@ export function BackgroundPicker() {
         <div className="space-y-4">
           {" "}
           {/* 16px vertical spacing between groups */}
+          {/* Custom Color Pickers */}
           <div className="flex items-center gap-3">
-            {/* Primary - Select color Color Swatch */}
             <div className="flex-1 space-y-2 !mt-2">
-              {" "}
-              {/* 8px label spacing */}
               <label className="text-[10px] font-medium text-zinc-500 ml-1">
-                Primary - Select color
+                Primary
               </label>
               <div className="relative group !mt-1">
                 <input
@@ -105,7 +106,7 @@ export function BackgroundPicker() {
             {background.type === "gradient" && (
               <div className="flex-1 space-y-2 !mt-2">
                 <label className="text-[10px] font-medium text-zinc-500 ml-1">
-                  Secondary - Select color
+                  Secondary
                 </label>
                 <div className="relative group !mt-1">
                   <input
@@ -124,9 +125,36 @@ export function BackgroundPicker() {
               </div>
             )}
           </div>
+          {/* Gradient Presets (New) */}
+          {background.type === "gradient" && (
+            <div className="pt-2">
+              <label className="text-[10px] font-medium text-zinc-500 mb-2 block ml-1">
+                Curated Presets
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {GRADIENT_PRESETS.map((preset) => (
+                  <button
+                    key={preset.name}
+                    onClick={() =>
+                      setBackground({ color1: preset.c1, color2: preset.c2 })
+                    }
+                    className="h-8 rounded-lg border border-white/5 relative overflow-hidden group transition-all hover:scale-[1.02] hover:border-white/20"
+                    title={preset.name}
+                  >
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background: `linear-gradient(135deg, ${preset.c1}, ${preset.c2})`,
+                      }}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {/* Gradient Direction Presets */}
           {background.type === "gradient" && (
-            <div className="pt-1 !mt-2">
+            <div className="pt-1 !mt-4">
               <label className="text-[10px] font-medium text-zinc-500 mb-2 block ml-1">
                 Gradient Direction
               </label>
@@ -166,13 +194,14 @@ export function BackgroundPicker() {
           </h3>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 mb-4">
           {" "}
-          {/* 12px gap */}
+          {/* 2x2 Grid for 4 options */}
           {[
             { id: "none", label: "None", icon: CircleOff, desc: "Flat" },
             { id: "radial", label: "Glow", icon: Sun, desc: "Soft" },
             { id: "spotlight", label: "Spot", icon: Lightbulb, desc: "Beam" },
+            { id: "beam", label: "Beam", icon: ScanLine, desc: "Strip" },
           ].map((style) => (
             <button
               key={style.id}
@@ -194,6 +223,71 @@ export function BackgroundPicker() {
               <span className="text-[13px] font-medium">{style.label}</span>
             </button>
           ))}
+        </div>
+      </section>
+      {/* 2b. FINISHING (Vignette & Backdrop) */}
+      <section>
+        <div className="flex items-center gap-2 mb-4 px-1">
+          <div className="w-1 h-3 bg-blue-500/50 rounded-full !mb-2" />
+          <h3 className="!mb-2 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+            Finishing Touches
+          </h3>
+        </div>
+
+        <div className="space-y-3">
+          {/* Vignette Toggle */}
+          <div className="flex items-center justify-between p-1">
+            <div className="flex items-center gap-2">
+              <div
+                className={`p-1.5 rounded-md ${
+                  background.vignette
+                    ? "bg-blue-500/10 text-blue-400"
+                    : "bg-zinc-800/50 text-zinc-600"
+                }`}
+              >
+                <Monitor size={14} />
+              </div>
+              <span className="text-[13px] font-medium text-zinc-400">
+                Soft Vignette
+              </span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer scale-75 origin-right">
+              <input
+                type="checkbox"
+                checked={background.vignette}
+                onChange={(e) => setBackground({ vignette: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-zinc-500 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-zinc-800 peer-checked:after:bg-blue-500 peer-checked:after:border-blue-500"></div>
+            </label>
+          </div>
+
+          {/* Backdrop Panel Toggle */}
+          <div className="flex items-center justify-between p-1">
+            <div className="flex items-center gap-2">
+              <div
+                className={`p-1.5 rounded-md ${
+                  background.backdrop
+                    ? "bg-blue-500/10 text-blue-400"
+                    : "bg-zinc-800/50 text-zinc-600"
+                }`}
+              >
+                <LayoutGrid size={14} />
+              </div>
+              <span className="text-[13px] font-medium text-zinc-400">
+                Backdrop Panel
+              </span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer scale-75 origin-right">
+              <input
+                type="checkbox"
+                checked={background.backdrop}
+                onChange={(e) => setBackground({ backdrop: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-zinc-500 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-zinc-800 peer-checked:after:bg-blue-500 peer-checked:after:border-blue-500"></div>
+            </label>
+          </div>
         </div>
       </section>
       {/* Divider */}
@@ -286,7 +380,7 @@ export function BackgroundPicker() {
                 className="w-full h-1.5 bg-zinc-800 rounded-full appearance-none accent-amber-400 cursor-pointer hover:accent-amber-300 block mb-3"
               />
               <p className="text-[9px] text-zinc-600 text-center !mt-2">
-                Recommended: 2-3%
+                Recommended: 2–3%
               </p>
             </div>
           </div>

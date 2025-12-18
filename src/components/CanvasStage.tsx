@@ -422,6 +422,37 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
           )}
 
           {/* STYLE LAYER - Additive Lighting Effects */}
+          {/* STYLE LAYER - Additive Lighting Effects */}
+          {/* 1. Vignette (Darkens edges) */}
+          {background.vignette && (
+            <Rect
+              width={stageWidth}
+              height={stageHeight}
+              fillRadialGradientStartPoint={{
+                x: stageWidth / 2,
+                y: stageHeight / 2,
+              }}
+              fillRadialGradientEndPoint={{
+                x: stageWidth / 2,
+                y: stageHeight / 2,
+              }}
+              fillRadialGradientStartRadius={
+                Math.min(stageWidth, stageHeight) * 0.4
+              }
+              fillRadialGradientEndRadius={
+                Math.max(stageWidth, stageHeight) * 0.9
+              }
+              fillRadialGradientColorStops={[
+                0,
+                "transparent",
+                1,
+                "rgba(0,0,0,0.2)", // Subtle edge darkening (20%)
+              ]}
+              listening={false}
+            />
+          )}
+
+          {/* 2. Lighting (Radial / Spotlight / Beam) */}
           {background.style === "radial" && (
             <Rect
               width={stageWidth}
@@ -440,10 +471,11 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
               }
               fillRadialGradientColorStops={[
                 0,
-                "rgba(255,255,255,0.1)", // Center lighting (subtle)
+                "rgba(255,255,255,0.12)", // Soft center light
                 1,
-                "rgba(0,0,0,0.3)", // Edge darkening (vignette)
+                "transparent",
               ]}
+              listening={false}
             />
           )}
 
@@ -461,6 +493,43 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
                 1,
                 "transparent",
               ]}
+              listening={false}
+            />
+          )}
+
+          {background.style === "beam" && (
+            <Rect
+              x={stageWidth / 2 - stageWidth * 0.15} // Center strip
+              y={0}
+              width={stageWidth * 0.3} // ~30% width
+              height={stageHeight}
+              fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+              fillLinearGradientEndPoint={{ x: stageWidth * 0.3, y: 0 }} // Horizontal gradient across strip
+              fillLinearGradientColorStops={[
+                0,
+                "transparent",
+                0.5,
+                "rgba(255,255,255,0.08)", // Very subtle vertical beam
+                1,
+                "transparent",
+              ]}
+              listening={false}
+            />
+          )}
+
+          {/* 3. Backdrop Panel (Behind Device) */}
+          {background.backdrop && (
+            <Rect
+              x={deviceX - 20}
+              y={deviceY - 20}
+              width={deviceMeta.frameWidth + 40}
+              height={deviceMeta.frameHeight + 40}
+              fill="rgba(255,255,255,0.08)" // Glassy panel
+              cornerRadius={deviceMeta.screen.radius + 32} // Adaptive radius
+              shadowColor="black"
+              shadowBlur={30}
+              shadowOpacity={0.2}
+              shadowOffsetY={10}
             />
           )}
 

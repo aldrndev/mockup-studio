@@ -4,10 +4,10 @@
   "frameWidth": 800,
   "frameHeight": 540,
   "screen": {
-    "x": 24,
-    "y": 24,
-    "width": 752,
-    "height": 470,
+    "x": 12,
+    "y": 12,
+    "width": 776,
+    "height": 492,
     "radius": 12
   },
   "bezelWidth": 12,

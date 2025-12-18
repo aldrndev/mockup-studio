@@ -3,18 +3,29 @@ import type { DeviceType, ExportPresetKey } from "../types/device";
 
 // Editor Types
 export type BackgroundBase = "solid" | "gradient";
-export type BackgroundStyle = "none" | "radial" | "spotlight";
+export type BackgroundStyle = "none" | "radial" | "spotlight" | "beam";
 export type OverlayPattern = "none" | "noise" | "dots" | "grid";
 
 export interface Background {
   type: BackgroundBase; // Base layer (Solid/Gradient)
-  style: BackgroundStyle; // Effect layer (Glow/Spotlight)
+  style: BackgroundStyle; // Effect layer (Glow/Spotlight/Beam)
   color1: string;
   color2: string; // Used for gradient/radial secondary color
   angle: number; // For linear gradient
   noise: number; // 0-1 opacity
   pattern: OverlayPattern;
+  vignette: boolean; // New: Subtle edge darkening
+  backdrop: boolean; // New: Soft panel behind device
 }
+
+export const GRADIENT_PRESETS = [
+  { name: "Indigo Navy", c1: "#4f46e5", c2: "#1e1b4b" }, // Indigo-600 -> Indigo-950
+  { name: "Purple Slate", c1: "#9333ea", c2: "#0f172a" }, // Purple-600 -> Slate-900
+  { name: "Charcoal", c1: "#27272a", c2: "#09090b" }, // Zinc-800 -> Zinc-950
+  { name: "Blue Teal", c1: "#2563eb", c2: "#0f766e" }, // Blue-600 -> Teal-700
+  { name: "Midnight", c1: "#1e293b", c2: "#020617" }, // Slate-800 -> Slate-950
+  { name: "Royal", c1: "#4338ca", c2: "#2e1065" }, // Indigo-700 -> Violet-950
+];
 
 export interface TextOverlay {
   id: string;
@@ -79,11 +90,13 @@ const defaultSubtitle: TextOverlay = {
 const defaultBackground: Background = {
   type: "gradient", // Base
   style: "none", // Style
-  color1: "#18181b", // zinc-950
-  color2: "#27272a", // zinc-800
+  color1: "#27272a", // Zinc-800 (Charcoal Preset Base)
+  color2: "#09090b", // Zinc-950
   angle: 135,
   noise: 0,
   pattern: "none",
+  vignette: true, // Mandatory Default ON
+  backdrop: false,
 };
 
 export const useEditorStore = create<EditorState>((set) => ({
