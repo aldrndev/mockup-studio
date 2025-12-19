@@ -23,21 +23,23 @@ interface CanvasStageProps {
 function DeviceBody({
   meta,
   deviceType,
+  frame,
 }: {
   meta: DeviceMeta;
   deviceType: DeviceType;
+  frame: Frame;
 }) {
   switch (deviceType) {
     case "iphone":
-      return <IPhoneBody meta={meta} />;
+      return <IPhoneBody meta={meta} frame={frame} />;
     case "android":
-      return <AndroidFrame meta={meta} />;
+      return <AndroidFrame meta={meta} frame={frame} />;
     case "tablet":
-      return <TabletFrame meta={meta} />;
+      return <TabletFrame meta={meta} frame={frame} />;
     case "desktop":
-      return <MacBookBody meta={meta} />;
+      return <MacBookBody meta={meta} frame={frame} />;
     default:
-      return <IPhoneBody meta={meta} />;
+      return <IPhoneBody meta={meta} frame={frame} />;
   }
 }
 
@@ -60,22 +62,96 @@ function DeviceOverlay({
 
 // --- Split Components per Device ---
 
-function IPhoneBody({ meta }: { meta: DeviceMeta }) {
-  const frameColor = "#1a1a1c";
-  const borderColor = "#2a2a2c";
+function IPhoneBody({ meta, frame }: { meta: DeviceMeta; frame: Frame }) {
+  // Titanium-like Gradient for the main chassis
+  // Dark Titanium: varies from #4a4a4c to #2a2a2c
+  const frameGradientStops = [
+    0, "#555557",
+    0.2, "#2a2a2d",
+    0.5, "#1a1a1c",
+    0.8, "#2a2a2d",
+    1, "#444446"
+  ];
+
+  // Dynamic Thickness Calculation
+  const rotateXRad = ((frame.rotateX || 0) * Math.PI) / 180;
+  const rotateYRad = ((frame.rotateY || 0) * Math.PI) / 180;
+  
+  // Base thickness factor - how "thick" the device is
+  const thickness = 10; 
+  
+  // Calculate offset vector based on tilt
+  // RotateY tilts left/right -> X offset for depth
+  // RotateX tilts forward/back -> Y offset for depth
+  const thicknessX = Math.tan(rotateYRad) * thickness;
+  const thicknessY = Math.tan(rotateXRad) * thickness;
+
+  // Number of layers for smoothness (more = smoother but slower)
+  const layerCount = 10;
+
+  // Simulated Depth Layers (Thickness)
+  const depthLayers = Array.from({ length: layerCount }).map((_, i) => {
+    // distribute offset across layers
+    const layerX = (thicknessX / layerCount) * (i + 1);
+    const layerY = (thicknessY / layerCount) * (i + 1);
+    
+    return (
+      <Rect
+        key={i}
+        x={layerX}
+        y={layerY}
+        width={meta.frameWidth}
+        height={meta.frameHeight}
+        cornerRadius={meta.screen.radius + 4}
+        fill="#1a1a1c" 
+        stroke="#111"
+        strokeWidth={1}
+      />
+    );
+  });
 
   return (
     <Group>
+      {/* 0. Thickness / Depth Simulation */}
+      {/* We offset the stack slightly so the "main" face is centered or on top */}
+      <Group> 
+        {depthLayers}
+      </Group>
+      {/* 1. Main Chassis (Outer Frame) */}
       <Rect
         x={0}
         y={0}
         width={meta.frameWidth}
         height={meta.frameHeight}
-        fill={frameColor}
-        cornerRadius={meta.screen.radius + 2}
-        stroke={borderColor}
-        strokeWidth={1.5}
+        cornerRadius={meta.screen.radius + 4}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: meta.frameWidth, y: meta.frameHeight }}
+        fillLinearGradientColorStops={frameGradientStops}
+        shadowColor="black"
+        shadowBlur={30}
+        shadowOpacity={0.6}
+        shadowOffset={{ x: 0, y: 20 }}
       />
+      
+      {/* 2. Antenna Bands (Subtle dividers) */}
+      <Rect x={0} y={110} width={3} height={1} fill="#000" opacity={0.4} />
+      <Rect x={meta.frameWidth - 3} y={110} width={3} height={1} fill="#000" opacity={0.4} />
+      <Rect x={0} y={meta.frameHeight - 110} width={3} height={1} fill="#000" opacity={0.4} />
+      <Rect x={meta.frameWidth - 3} y={meta.frameHeight - 110} width={3} height={1} fill="#000" opacity={0.4} />
+
+      {/* 3. Inner Bezel (Black Border around screen) */}
+      <Rect
+        x={6}
+        y={6}
+        width={meta.frameWidth - 12}
+        height={meta.frameHeight - 12}
+        fill="#000000"
+        cornerRadius={meta.screen.radius + 1}
+        stroke="#111"
+        strokeWidth={1}
+      />
+
+      {/* 4. Screen Background (Behind content) */}
       <Rect
         x={meta.screen.x}
         y={meta.screen.y}
@@ -84,38 +160,54 @@ function IPhoneBody({ meta }: { meta: DeviceMeta }) {
         fill="#000000"
         cornerRadius={meta.screen.radius}
       />
-      {/* Side Buttons */}
+
+      {/* 5. Buttons (Left Side) - Volume & Action */}
+      <Group>
+         {/* Action Button */}
+        <Rect
+          x={-2}
+          y={120}
+          width={4}
+          height={28}
+          fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+          fillLinearGradientEndPoint={{ x: 4, y: 0 }}
+          fillLinearGradientColorStops={[0, "#333", 1, "#1a1a1c"]}
+          cornerRadius={[4, 0, 0, 4]}
+        />
+        {/* Vol Up */}
+        <Rect
+          x={-2}
+          y={165}
+          width={4}
+          height={55}
+          fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+          fillLinearGradientEndPoint={{ x: 4, y: 0 }}
+          fillLinearGradientColorStops={[0, "#333", 1, "#1a1a1c"]}
+          cornerRadius={[4, 0, 0, 4]}
+        />
+        {/* Vol Down */}
+        <Rect
+          x={-2}
+          y={230}
+          width={4}
+          height={55}
+          fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+          fillLinearGradientEndPoint={{ x: 4, y: 0 }}
+          fillLinearGradientColorStops={[0, "#333", 1, "#1a1a1c"]}
+          cornerRadius={[4, 0, 0, 4]}
+        />
+      </Group>
+
+      {/* 6. Power Button (Right Side) */}
       <Rect
-        x={meta.frameWidth - 3}
-        y={140}
-        width={3}
-        height={80}
-        fill={borderColor}
-        cornerRadius={[0, 2, 2, 0]}
-      />
-      <Rect
-        x={0}
-        y={120}
-        width={3}
-        height={28}
-        fill={borderColor}
-        cornerRadius={[2, 0, 0, 2]}
-      />
-      <Rect
-        x={0}
-        y={165}
-        width={3}
-        height={55}
-        fill={borderColor}
-        cornerRadius={[2, 0, 0, 2]}
-      />
-      <Rect
-        x={0}
-        y={230}
-        width={3}
-        height={55}
-        fill={borderColor}
-        cornerRadius={[2, 0, 0, 2]}
+        x={meta.frameWidth - 2}
+        y={190}
+        width={4}
+        height={90}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: 4, y: 0 }}
+        fillLinearGradientColorStops={[0, "#1a1a1c", 1, "#444"]}
+        cornerRadius={[0, 4, 4, 0]}
       />
     </Group>
   );
@@ -128,6 +220,7 @@ function IPhoneOverlay({ meta }: { meta: DeviceMeta }) {
 
   return (
     <Group>
+      {/* Dynamic Island */}
       <Rect
         x={(meta.frameWidth - dynamicIslandWidth) / 2}
         y={dynamicIslandY}
@@ -136,26 +229,104 @@ function IPhoneOverlay({ meta }: { meta: DeviceMeta }) {
         fill="#000000"
         cornerRadius={18}
       />
+      {/* Glossy Reflection (Glass effect) */}
+      <Rect
+        x={meta.screen.x}
+        y={meta.screen.y}
+        width={meta.screen.width}
+        height={meta.screen.height}
+        cornerRadius={meta.screen.radius}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: meta.screen.width, y: meta.screen.height }}
+        fillLinearGradientColorStops={[
+          0, "rgba(255,255,255,0.05)",
+          0.4, "transparent",
+          0.6, "transparent",
+          1, "rgba(255,255,255,0.02)"
+        ]}
+        listening={false}
+      />
     </Group>
   );
 }
 
-function AndroidFrame({ meta }: { meta: DeviceMeta }) {
-  const frameColor = "#121212";
-  const borderColor = "#2a2a2a";
+function AndroidFrame({ meta, frame }: { meta: DeviceMeta; frame: Frame }) {
+  // Sharp, Boxy Design (S25 Ultra style)
+  const frameGradientStops = [
+    0, "#2d2d2d",
+    0.3, "#1a1a1a",
+    0.7, "#1a1a1a",
+    1, "#2d2d2d"
+  ];
+
+  // Dynamic Thickness Calculation
+  const rotateXRad = ((frame.rotateX || 0) * Math.PI) / 180;
+  const rotateYRad = ((frame.rotateY || 0) * Math.PI) / 180;
+
+  const thickness = 12; // Slightly thicker for Ultra
+  
+  // RotateY tilts left/right -> X offset for depth
+  // RotateX tilts forward/back -> Y offset for depth
+  const thicknessX = Math.tan(rotateYRad) * thickness;
+  const thicknessY = Math.tan(rotateXRad) * thickness;
+
+  const layerCount = 12;
+
+  // Simulated Depth Layers (Thickness)
+  const depthLayers = Array.from({ length: layerCount }).map((_, i) => {
+    const layerX = (thicknessX / layerCount) * (i + 1);
+    const layerY = (thicknessY / layerCount) * (i + 1);
+
+    return (
+      <Rect
+        key={i}
+        x={layerX}
+        y={layerY}
+        width={meta.frameWidth}
+        height={meta.frameHeight}
+        cornerRadius={24}
+        fill="#1a1a1a" // Darker internal chassis
+        stroke="#000"
+        strokeWidth={0.5}
+      />
+    );
+  });
 
   return (
     <Group>
+      {/* 0. Thickness / Depth Simulation */}
+      <Group>
+        {depthLayers}
+      </Group>
+      {/* 1. Main Chroma Chassis */}
       <Rect
         x={0}
         y={0}
         width={meta.frameWidth}
         height={meta.frameHeight}
-        fill={frameColor}
-        cornerRadius={meta.screen.radius + 4}
-        stroke={borderColor}
-        strokeWidth={1.5}
+        cornerRadius={24} // More rounded based on S25 Ultra reference image
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: meta.frameWidth, y: 0 }}
+        fillLinearGradientColorStops={frameGradientStops}
+        shadowColor="black"
+        shadowBlur={25}
+        shadowOpacity={0.5}
+        shadowOffset={{ x: 0, y: 15 }}
       />
+
+
+
+      {/* 2. Inner Black Bezel */}
+      <Rect
+        x={4}
+        y={4}
+        width={meta.frameWidth - 8}
+        height={meta.frameHeight - 8}
+        fill="#000000"
+        cornerRadius={20}
+      />
+
+      {/* 3. Screen Background */}
       <Rect
         x={meta.screen.x}
         y={meta.screen.y}
@@ -164,28 +335,63 @@ function AndroidFrame({ meta }: { meta: DeviceMeta }) {
         fill="#000000"
         cornerRadius={meta.screen.radius}
       />
-      <Circle x={meta.frameWidth / 2} y={24} radius={8} fill="#000000" />
-      <Rect
-        x={meta.frameWidth - 3}
-        y={100}
-        width={3}
-        height={60}
-        fill={borderColor}
-        cornerRadius={[0, 2, 2, 0]}
+
+      {/* 4. Camera Hole Punch */}
+      <Circle
+        x={meta.frameWidth / 2}
+        y={28}
+        radius={6}
+        fill="#000"
+        stroke="#111"
+        strokeWidth={1}
       />
-      <Rect
-        x={meta.frameWidth - 3}
-        y={180}
-        width={3}
-        height={80}
-        fill={borderColor}
-        cornerRadius={[0, 2, 2, 0]}
+       {/* Camera Reflection */}
+      <Circle x={meta.frameWidth / 2 - 2} y={26} radius={2} fill="rgba(255,255,255,0.2)" />
+
+
+      {/* 5. Buttons (Right Side) */}
+      <Group>
+        {/* Power */}
+        <Rect
+          x={meta.frameWidth - 2}
+          y={180}
+          width={3}
+          height={50}
+          fill="#333"
+          cornerRadius={[0, 2, 2, 0]}
+        />
+         {/* Volume Rocker */}
+         <Rect
+          x={meta.frameWidth - 2}
+          y={100}
+          width={3}
+          height={70}
+          fill="#333"
+          cornerRadius={[0, 2, 2, 0]}
+        />
+      </Group>
+
+      {/* 6. Subtle Screen Glare */}
+       <Rect
+        x={meta.screen.x}
+        y={meta.screen.y}
+        width={meta.screen.width}
+        height={meta.screen.height}
+        cornerRadius={meta.screen.radius}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: meta.screen.width, y: meta.screen.height }}
+        fillLinearGradientColorStops={[
+          0, "rgba(255,255,255,0.03)",
+          0.5, "transparent",
+          1, "rgba(255,255,255,0.01)"
+        ]}
+        listening={false}
       />
     </Group>
   );
 }
 
-function TabletFrame({ meta }: { meta: DeviceMeta }) {
+function TabletFrame({ meta, frame }: { meta: DeviceMeta; frame: Frame }) {
   const frameColor = "#1c1c1e";
   const borderColor = "#3a3a3c";
 
@@ -214,7 +420,7 @@ function TabletFrame({ meta }: { meta: DeviceMeta }) {
   );
 }
 
-function MacBookBody({ meta }: { meta: DeviceMeta }) {
+function MacBookBody({ meta, frame }: { meta: DeviceMeta; frame: Frame }) {
   const lidColor = "#27272a"; // Zinc-800
   const borderColor = "#3f3f46"; // Zinc-700
   const baseHeight = 16;
@@ -721,8 +927,19 @@ function FrameContent({
         <Group
           x={centerX}
           y={centerY}
-          scaleX={frame.scale}
-          scaleY={frame.scale}
+          // Scale-based 3D perspective (no skew distortion)
+          // RotateX (forward/back tilt) → shrink height
+          // RotateY (left/right tilt) → shrink width  
+          scaleX={
+            frame.scale *
+            (frame.flipX ? -1 : 1) *
+            Math.cos(((frame.rotateY || 0) * Math.PI) / 180)
+          }
+          scaleY={
+            frame.scale *
+            (frame.flipY ? -1 : 1) *
+            Math.cos(((frame.rotateX || 0) * Math.PI) / 180)
+          }
           rotation={frame.rotation}
           offset={{
             x: deviceMeta.frameWidth / 2,
@@ -734,7 +951,7 @@ function FrameContent({
             // Optional: Snap visual feedback or cursor change
           }}
         >
-          <DeviceBody meta={deviceMeta} deviceType={deviceType} />
+          <DeviceBody meta={deviceMeta} deviceType={deviceType} frame={frame} />
           <Group
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             clipFunc={(ctx: any) => {

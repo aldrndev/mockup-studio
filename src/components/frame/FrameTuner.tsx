@@ -133,11 +133,146 @@ export function FrameTuner() {
       {/* SECTION 2: TRANSFORM */}
       {activeFrame.showDevice ? (
         <section>
+          {/* Quick Layouts Presets */}
+          <div className="space-y-2 !mb-4">
+            <div className="flex items-center gap-2 !mb-2 px-1">
+               <div className="w-1 h-3 bg-white/40 rounded-full my-auto" />
+              <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                Quick Layouts
+              </h3>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+                 <button
+                  onClick={() =>
+                    setFrameProperties({
+                      rotation: 0,
+                      rotateX: 0,
+                      rotateY: 0,
+                      flipX: false,
+                      flipY: false,
+                      offsetX: 0,
+                      offsetY: 0,
+                    })
+                  }
+                  className="px-2 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg flex flex-col items-center gap-1 transition-colors group"
+                  title="Front View"
+                >
+                  <div className="w-4 h-6 border-2 border-zinc-500 rounded-[2px] group-hover:border-white transition-colors" />
+                  <span className="text-[9px] text-zinc-400 group-hover:text-white">Front</span>
+                </button>
+
+                <button
+                  onClick={() =>
+                    setFrameProperties({
+                      rotation: 0,
+                      rotateX: 50,
+                      rotateY: 0,
+                      flipX: false,
+                      flipY: false,
+                      offsetX: 0,
+                    })
+                  }
+                  className="px-2 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg flex flex-col items-center gap-1 transition-colors group"
+                  title="Laying Flat"
+                >
+                   <div className="w-4 h-6 border-2 border-zinc-500 rounded-[2px] group-hover:border-white transition-colors transform skew-x-[30deg] scale-y-75 origin-bottom" />
+                  <span className="text-[9px] text-zinc-400 group-hover:text-white">Flat</span>
+                </button>
+
+                <button
+                  onClick={() =>
+                    setFrameProperties({
+                      rotation: 30,
+                      rotateX: 10,
+                      rotateY: 10,
+                      flipX: false,
+                      flipY: false,
+                    })
+                  }
+                  className="px-2 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg flex flex-col items-center gap-1 transition-colors group"
+                  title="Isometric Left"
+                >
+                  <div className="w-4 h-6 border-2 border-zinc-500 rounded-[2px] group-hover:border-white transition-colors transform rotate-[30deg]" />
+                  <span className="text-[9px] text-zinc-400 group-hover:text-white">Iso L</span>
+                </button>
+
+                <button
+                  onClick={() =>
+                    setFrameProperties({
+                      rotation: -30,
+                      rotateX: 10,
+                      rotateY: -10,
+                      flipX: false,
+                      flipY: false,
+                    })
+                  }
+                  className="px-2 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg flex flex-col items-center gap-1 transition-colors group"
+                  title="Isometric Right"
+                >
+                   <div className="w-4 h-6 border-2 border-zinc-500 rounded-[2px] group-hover:border-white transition-colors transform -rotate-[30deg]" />
+                  <span className="text-[9px] text-zinc-400 group-hover:text-white">Iso R</span>
+                </button>
+
+                 <button
+                  onClick={() =>
+                    setFrameProperties({
+                      rotation: 0,
+                      rotateX: 0,
+                      rotateY: 45,
+                      flipX: false,
+                      flipY: false,
+                    })
+                  }
+                  className="px-2 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg flex flex-col items-center gap-1 transition-colors group"
+                  title="Side Profile"
+                >
+                   <div className="w-1 h-6 bg-zinc-500 rounded-[1px] group-hover:bg-white transition-colors" />
+                  <span className="text-[9px] text-zinc-400 group-hover:text-white">Side</span>
+                </button>
+
+                <button
+                   onClick={() =>
+                    setFrameProperties({
+                      rotation: 15,
+                      rotateX: -10,
+                      rotateY: -5,
+                      offsetY: -40,
+                      scale: 1.1 // Slightly closer
+                    })
+                  }
+                  className="px-2 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-lg flex flex-col items-center gap-1 transition-colors group"
+                  title="Floating Hover"
+                >
+                   <div className="w-4 h-6 border-2 border-zinc-500 rounded-[2px] group-hover:border-white transition-colors transform -translate-y-1 shadow-lg" />
+                  <span className="text-[9px] text-zinc-400 group-hover:text-white">Float</span>
+                </button>
+            </div>
+          </div>
+
           <div className="flex items-center gap-2 !mb-4 px-1">
             <div className="w-1 h-3 bg-white/40 rounded-full my-auto" />
             <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
               Transform
             </h3>
+            <div className="flex-1" />
+            <button
+              onClick={() =>
+                setFrameProperties({
+                  scale: 1,
+                  rotation: 0,
+                  rotateX: 0,
+                  rotateY: 0,
+                  flipX: false,
+                  flipY: false,
+                  offsetX: 0,
+                  offsetY: 0,
+                })
+              }
+              className="text-[10px] items-center gap-1 text-zinc-500 hover:text-white transition-colors flex"
+            >
+              <RotateCw size={10} className="-scale-x-100" />
+              Reset
+            </button>
           </div>
 
           <div className="!space-y-4">
@@ -145,18 +280,39 @@ export function FrameTuner() {
               label="Rotation"
               icon={RotateCw}
               value={activeFrame.rotation}
-              min={-45}
-              max={45}
+              min={-180}
+              max={180}
               unit="°"
               onChange={(val) => setFrameProperties({ rotation: val })}
             />
+
+            <div className="grid grid-cols-2 gap-4">
+              <Slider
+                label="Rotate X"
+                icon={RotateCw}
+                value={activeFrame.rotateX || 0}
+                min={-60}
+                max={60}
+                unit="°"
+                onChange={(val) => setFrameProperties({ rotateX: val })}
+              />
+              <Slider
+                label="Rotate Y"
+                icon={RotateCw}
+                value={activeFrame.rotateY || 0}
+                min={-60}
+                max={60}
+                unit="°"
+                onChange={(val) => setFrameProperties({ rotateY: val })}
+              />
+            </div>
 
             <Slider
               label="Scale"
               icon={Maximize}
               value={activeFrame.scale}
-              min={0.5}
-              max={1.5}
+              min={0.1}
+              max={3.0}
               step={0.05}
               unit="x"
               onChange={(val) => setFrameProperties({ scale: val })}
@@ -167,8 +323,8 @@ export function FrameTuner() {
                 label="Offset X"
                 icon={Move}
                 value={activeFrame.offsetX}
-                min={-300}
-                max={300}
+                min={-1000}
+                max={1000}
                 step={10}
                 onChange={(val) => setFrameProperties({ offsetX: val })}
               />
@@ -176,11 +332,35 @@ export function FrameTuner() {
                 label="Offset Y"
                 icon={Move}
                 value={activeFrame.offsetY}
-                min={-300}
-                max={300}
+                min={-1000}
+                max={1000}
                 step={10}
                 onChange={(val) => setFrameProperties({ offsetY: val })}
               />
+            </div>
+
+            {/* Flip Controls */}
+            <div className="grid grid-cols-2 gap-4 pt-2">
+               <button
+                onClick={() => setFrameProperties({ flipX: !activeFrame.flipX })}
+                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-medium transition-all ${
+                  activeFrame.flipX
+                    ? "bg-indigo-600 text-white"
+                    : "bg-zinc-800 text-zinc-400 hover:text-zinc-300"
+                }`}
+              >
+                Flip Horz
+              </button>
+              <button
+                onClick={() => setFrameProperties({ flipY: !activeFrame.flipY })}
+                className={`flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-medium transition-all ${
+                  activeFrame.flipY
+                    ? "bg-indigo-600 text-white"
+                    : "bg-zinc-800 text-zinc-400 hover:text-zinc-300"
+                }`}
+              >
+                Flip Vert
+              </button>
             </div>
           </div>
         </section>

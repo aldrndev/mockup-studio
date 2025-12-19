@@ -54,6 +54,10 @@ export interface Frame {
   subtitle: TextOverlay;
   scale: number;
   rotation: number;
+  rotateX: number; // 3D Rotation around X axis (tilt forward/back)
+  rotateY: number; // 3D Rotation around Y axis (tilt left/right)
+  flipX: boolean; // New: Horizontal Flip
+  flipY: boolean; // New: Vertical Flip
   offsetX: number;
   offsetY: number;
   showDevice: boolean; // New: Controls if device body is rendered
@@ -94,6 +98,10 @@ interface EditorState {
   setFrameProperties: (props: {
     scale?: number;
     rotation?: number;
+    rotateX?: number;
+    rotateY?: number;
+    flipX?: boolean;
+    flipY?: boolean;
     offsetX?: number;
     offsetY?: number;
   }) => void;
@@ -156,6 +164,10 @@ export const useEditorStore = create<EditorState>((set) => ({
       subtitle: defaultSubtitle,
       scale: 1,
       rotation: 0,
+      rotateX: 0,
+      rotateY: 0,
+      flipX: false,
+      flipY: false,
       offsetX: 0,
       offsetY: 0,
       showDevice: true, // Auto-show for initial
@@ -263,6 +275,10 @@ export const useEditorStore = create<EditorState>((set) => ({
             },
             scale: 1,
             rotation: 0,
+            rotateX: 0,
+            rotateY: 0,
+            flipX: false,
+            flipY: false,
             offsetX: 0,
             offsetY: 0,
             showDevice: showDevice,
@@ -353,6 +369,10 @@ export const useEditorStore = create<EditorState>((set) => ({
           subtitle: defaultSubtitle,
           scale: 1,
           rotation: 0,
+          rotateX: 0,
+          rotateY: 0,
+          flipX: false,
+          flipY: false,
           offsetX: 0,
           offsetY: 0,
           showDevice: true,
