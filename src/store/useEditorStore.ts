@@ -107,9 +107,9 @@ const defaultHeadline: TextOverlay = {
   text: "",
   x: 0.5,
   y: 0.07,
-  fontSize: 64,
+  fontSize: 48,
   fontFamily: "Poppins",
-  fontWeight: 800,
+  fontWeight: 700,
   fill: "#ffffff",
   type: "headline",
 };
@@ -119,10 +119,10 @@ const defaultSubtitle: TextOverlay = {
   text: "",
   x: 0.5,
   y: 0.14,
-  fontSize: 32,
+  fontSize: 24,
   fontFamily: "Inter",
-  fontWeight: 500,
-  fill: "#e4e4e7",
+  fontWeight: 400,
+  fill: "#a1a1aa",
   type: "subtitle",
 };
 

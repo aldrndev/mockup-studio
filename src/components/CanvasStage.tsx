@@ -340,7 +340,8 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
   const isDesktop = deviceType === "desktop";
 
   // Canvas dimensions - device + padding for text space
-  const paddingX = 80;
+  // Padding calculated to match App Store export ratio (1320 × 2868)
+  const paddingX = 92; // Calculated for 1320×2868 ratio
   const paddingTop = 320; // Dedicated marketing text zone
   const paddingBottom = 80;
   const baseFrameWidth =

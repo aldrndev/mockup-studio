@@ -25,9 +25,9 @@ export function ExportPanel({ stageRef }: Props) {
   const { deviceMeta } = useCanvasRenderer(deviceType, null);
 
   // Recalculate dimensions to match CanvasStage logic
-  // TODO: Refactor shared dimensions to a config/hook
+  // Padding calculated to match App Store export ratio (1320 × 2868)
   const isDesktop = deviceType === "desktop";
-  const paddingX = 80;
+  const paddingX = 92; // Must match CanvasStage
   const paddingTop = 320;
   const paddingBottom = 80;
   const baseFrameWidth =
