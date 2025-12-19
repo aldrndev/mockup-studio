@@ -90,7 +90,7 @@ export function ExportPanel({ stageRef }: Props) {
         });
 
         const blob = await (await fetch(dataUrl)).blob();
-        saveAs(blob, `${timestamp}.png`);
+        saveAs(blob, `${timestamp}-${exportPreset}.png`);
       } else {
         // ZIP export for multiple frames
         const zip = new JSZip();
@@ -119,7 +119,7 @@ export function ExportPanel({ stageRef }: Props) {
         }
 
         const content = await zip.generateAsync({ type: "blob" });
-        saveAs(content, `${timestamp}.zip`);
+        saveAs(content, `${timestamp}-${exportPreset}.zip`);
       }
     } finally {
       // 4. Restore original state
