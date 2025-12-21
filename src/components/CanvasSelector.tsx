@@ -116,7 +116,7 @@ export function CanvasSelector() {
 
       {/* Add Button */}
       <button
-        onClick={addFrame}
+        onClick={() => addFrame()}
         disabled={frames.length >= 4}
         className="w-9 h-9 shrink-0 flex items-center justify-center rounded-lg border border-dashed border-zinc-700 text-zinc-500 hover:text-white hover:border-zinc-500 hover:bg-zinc-800 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         title="Add Frame (Max 4)"

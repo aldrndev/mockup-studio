@@ -8,6 +8,17 @@ const styles: { key: TextPreset; label: string }[] = [
   { key: "bold", label: "Bold" },
 ];
 
+const fontFamilies = [
+  "Inter",
+  "Poppins", 
+  "Roboto",
+  "Outfit",
+  "SF Pro Display",
+  "Montserrat",
+  "Open Sans",
+  "Lato",
+];
+
 export function TextEditor() {
   const {
     frames,
@@ -131,6 +142,17 @@ export function TextEditor() {
                   className="bg-transparent text-xs text-zinc-300 w-full text-right outline-none font-mono"
                 />
               </div>
+              <select
+                value={headline.fontFamily}
+                onChange={(e) => setHeadline({ fontFamily: e.target.value })}
+                className="w-full h-7 px-2 bg-zinc-800/50 border border-zinc-800 rounded text-xs text-zinc-300 outline-none"
+              >
+                {fontFamilies.map((font) => (
+                  <option key={font} value={font}>
+                    {font}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -170,6 +192,17 @@ export function TextEditor() {
                   className="bg-transparent text-xs text-zinc-300 w-full text-right outline-none font-mono"
                 />
               </div>
+              <select
+                value={subtitle.fontFamily}
+                onChange={(e) => setSubtitle({ fontFamily: e.target.value })}
+                className="w-full h-7 px-2 bg-zinc-800/50 border border-zinc-800 rounded text-xs text-zinc-300 outline-none"
+              >
+                {fontFamilies.map((font) => (
+                  <option key={font} value={font}>
+                    {font}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

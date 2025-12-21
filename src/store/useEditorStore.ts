@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { DeviceType, ExportPresetKey } from "../types/device";
 
 // Editor Types
-export type BackgroundBase = "solid" | "gradient";
+export type BackgroundBase = "solid" | "gradient" | "image";
 export type BackgroundStyle = "none" | "radial" | "spotlight" | "beam";
 export type OverlayPattern = "none" | "noise" | "dots" | "grid";
 
@@ -16,6 +16,7 @@ export interface Background {
   pattern: OverlayPattern;
   vignette: boolean; // New: Subtle edge darkening
   backdrop: boolean; // New: Soft panel behind device
+  imageUrl?: string | null;
 }
 
 export const GRADIENT_PRESETS = [
@@ -49,13 +50,16 @@ export type EditorMode = "standard" | "custom";
 
 export interface Frame {
   id: string;
+  deviceType: DeviceType; // Per-frame device type
   screenshot: string | null;
   headline: TextOverlay;
   subtitle: TextOverlay;
   scale: number;
   rotation: number;
-  rotateX: number; // 3D Rotation around X axis (tilt forward/back)
-  rotateY: number; // 3D Rotation around Y axis (tilt left/right)
+  rotateX: number; // 3D Rotation (scale-based foreshortening)
+  rotateY: number; // 3D Rotation (scale-based foreshortening)
+  skewX: number; // Tilt X (skew-based distortion)
+  skewY: number; // Tilt Y (skew-based distortion)
   flipX: boolean; // New: Horizontal Flip
   flipY: boolean; // New: Vertical Flip
   offsetX: number;
@@ -70,7 +74,10 @@ interface EditorState {
   textPreset: TextPreset;
   cutPreset: CutPreset;
   exportPreset: ExportPresetKey;
-  editorMode: EditorMode; // New: Controls manual/auto workflow
+  editorMode: EditorMode;
+  // Custom Canvas Size (null = auto from device)
+  canvasWidth: number | null;
+  canvasHeight: number | null;
 
   // Frame Sequence State
   frames: Frame[];
@@ -83,10 +90,11 @@ interface EditorState {
   setTextPreset: (preset: TextPreset) => void;
   setCutPreset: (preset: CutPreset) => void;
   setExportPreset: (preset: ExportPresetKey) => void;
-  setEditorMode: (mode: EditorMode) => void; // New action
+  setEditorMode: (mode: EditorMode) => void;
+  setCanvasSize: (width: number | null, height: number | null) => void;
 
   // Frame Management
-  addFrame: () => void;
+  addFrame: (deviceType?: DeviceType) => void;
   removeFrame: (id: string) => void;
   setActiveFrame: (id: string) => void;
   reorderFrame: (fromIndex: number, toIndex: number) => void;
@@ -100,6 +108,8 @@ interface EditorState {
     rotation?: number;
     rotateX?: number;
     rotateY?: number;
+    skewX?: number;
+    skewY?: number;
     flipX?: boolean;
     flipY?: boolean;
     offsetX?: number;
@@ -154,11 +164,14 @@ export const useEditorStore = create<EditorState>((set) => ({
   textPreset: "appstore",
   cutPreset: "even",
   exportPreset: "appstore",
-  editorMode: "standard", // Default to Standard (Auto)
+  editorMode: "standard",
+  canvasWidth: null, // null = auto from device
+  canvasHeight: null,
 
   frames: [
     {
       id: initialFrameId,
+      deviceType: "iphone",
       screenshot: null,
       headline: defaultHeadline,
       subtitle: defaultSubtitle,
@@ -166,6 +179,8 @@ export const useEditorStore = create<EditorState>((set) => ({
       rotation: 0,
       rotateX: 0,
       rotateY: 0,
+      skewX: 0,
+      skewY: 0,
       flipX: false,
       flipY: false,
       offsetX: 0,
@@ -175,7 +190,16 @@ export const useEditorStore = create<EditorState>((set) => ({
   ],
   activeFrameId: initialFrameId,
 
-  setDeviceType: (deviceType) => set({ deviceType }),
+  // Set device type for active frame only (per-frame device selection)
+  setDeviceType: (deviceType) =>
+    set((state) => ({
+      deviceType, // Keep global for new frames
+      frames: state.frames.map((frame) =>
+        frame.id === state.activeFrameId
+          ? { ...frame, deviceType }
+          : frame
+      ),
+    })),
 
   setBackground: (background) =>
     set((state) => ({
@@ -232,12 +256,16 @@ export const useEditorStore = create<EditorState>((set) => ({
     };
 
     set((state) => {
-      // Update ALL frames with new text style presets
-      const updatedFrames = state.frames.map((frame) => ({
-        ...frame,
-        headline: { ...frame.headline, ...presets[preset].headline },
-        subtitle: { ...frame.subtitle, ...presets[preset].subtitle },
-      }));
+      // Update ONLY active frame with new text style presets
+      const updatedFrames = state.frames.map((frame) =>
+        frame.id === state.activeFrameId
+          ? {
+              ...frame,
+              headline: { ...frame.headline, ...presets[preset].headline },
+              subtitle: { ...frame.subtitle, ...presets[preset].subtitle },
+            }
+          : frame
+      );
 
       return {
         textPreset: preset,
@@ -249,9 +277,10 @@ export const useEditorStore = create<EditorState>((set) => ({
   setCutPreset: (preset) => set({ cutPreset: preset }),
   setExportPreset: (preset) => set({ exportPreset: preset }),
   setEditorMode: (mode) => set({ editorMode: mode }),
+  setCanvasSize: (width, height) => set({ canvasWidth: width, canvasHeight: height }),
 
   // Frame Management
-  addFrame: () =>
+  addFrame: (overrideDeviceType?: DeviceType) =>
     set((state) => {
       if (state.frames.length >= 8) return state; // Guardrail
       const newId = crypto.randomUUID();
@@ -262,6 +291,7 @@ export const useEditorStore = create<EditorState>((set) => ({
           ...state.frames,
           {
             id: newId,
+            deviceType: overrideDeviceType || state.deviceType, // Inherit current global device
             screenshot: null,
             headline: {
               ...defaultHeadline,
@@ -277,6 +307,8 @@ export const useEditorStore = create<EditorState>((set) => ({
             rotation: 0,
             rotateX: 0,
             rotateY: 0,
+            skewX: 0,
+            skewY: 0,
             flipX: false,
             flipY: false,
             offsetX: 0,
@@ -364,6 +396,7 @@ export const useEditorStore = create<EditorState>((set) => ({
       frames: [
         {
           id: newId,
+          deviceType: "iphone",
           screenshot: null,
           headline: defaultHeadline,
           subtitle: defaultSubtitle,
@@ -371,6 +404,8 @@ export const useEditorStore = create<EditorState>((set) => ({
           rotation: 0,
           rotateX: 0,
           rotateY: 0,
+          skewX: 0,
+          skewY: 0,
           flipX: false,
           flipY: false,
           offsetX: 0,

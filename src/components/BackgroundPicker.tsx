@@ -15,6 +15,7 @@ import {
   ArrowDownRight,
   Monitor,
   ScanLine,
+  Image as ImageIcon,
 } from "lucide-react";
 import type { BackgroundStyle } from "../store/useEditorStore";
 import { GRADIENT_PRESETS } from "../store/useEditorStore";
@@ -75,6 +76,17 @@ export function BackgroundPicker() {
             <Palette size={18} />
             Gradient
           </button>
+          <button
+            onClick={() => setBackground({ type: "image" })}
+            className={`flex-1 h-10 flex items-center justify-center gap-2 rounded-xl text-[13px] font-medium transition-all px-3 border ${
+              background.type === "image"
+                ? "bg-zinc-800 border-zinc-600 text-white shadow-sm ring-1 ring-white/10"
+                : "bg-transparent border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-400"
+            }`}
+          >
+            <ImageIcon size={18} />
+            Image
+          </button>
         </div>
 
         {/* Base Controls */}
@@ -82,6 +94,7 @@ export function BackgroundPicker() {
           {" "}
           {/* 16px vertical spacing between groups */}
           {/* Custom Color Pickers */}
+          {background.type !== "image" && (
           <div className="flex items-center gap-3">
             <div className="flex-1 space-y-2 !mt-4">
               <label className="text-[10px] font-medium text-zinc-500">
@@ -125,6 +138,81 @@ export function BackgroundPicker() {
               </div>
             )}
           </div>
+          )}
+
+          {/* Custom Image Controls */}
+            {background.type === "image" && (
+              <div className="!mt-4 space-y-3">
+                <label className="text-[10px] font-medium text-zinc-500 block">
+                  Custom Image
+                </label>
+                
+                {background.imageUrl ? (
+                  <div className="relative group aspect-video rounded-xl overflow-hidden border border-zinc-700 bg-zinc-800/50">
+                    <img 
+                      src={background.imageUrl} 
+                      alt="Background" 
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                       <label className="cursor-pointer px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-[11px] font-medium text-white transition-all backdrop-blur-md border border-white/10">
+                        Change
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                setBackground({ imageUrl: ev.target?.result as string });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                      <button
+                        onClick={() => setBackground({ imageUrl: null })}
+                        className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded-lg text-[11px] font-medium transition-all backdrop-blur-md border border-red-500/10"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center gap-2 h-24 rounded-xl border border-dashed border-zinc-700 bg-zinc-900/30 hover:bg-zinc-800/50 hover:border-zinc-500 cursor-pointer transition-all group">
+                    <div className="p-2 rounded-full bg-zinc-800 group-hover:bg-zinc-700 text-zinc-400 group-hover:text-white transition-colors">
+                      <ImageIcon size={20} />
+                    </div>
+                    <span className="text-[11px] text-zinc-500 group-hover:text-zinc-400">
+                      Upload Image
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            setBackground({ imageUrl: ev.target?.result as string });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                )}
+                
+                <p className="text-[9px] text-zinc-600">
+                  Tip: Use abstract patterns or dark wallpapers for best results.
+                </p>
+              </div>
+            )}
+
           {/* Gradient Presets (New) */}
           {background.type === "gradient" && (
             <div className="!mt-4">

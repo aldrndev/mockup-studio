@@ -2,7 +2,7 @@ import { useRef } from "react";
 import type Konva from "konva";
 import {
   UploadZone,
-  DeviceSelector,
+  AddDevicePanel,
   BackgroundPicker,
   TextEditor,
   CanvasStage,
@@ -10,6 +10,7 @@ import {
   CanvasSelector,
   FrameTuner,
 } from "./components";
+import { CanvasSizeEditor } from "./components/CanvasSizeEditor";
 
 function App() {
   const stageRef = useRef<Konva.Stage>(null);
@@ -51,12 +52,17 @@ function App() {
           </div>
 
           <div className="panel-section">
-            <span className="section-title">Device</span>
-            <DeviceSelector />
+            <span className="section-title">Add Device</span>
+            <AddDevicePanel />
           </div>
+
 
           <div className="panel-section">
             <FrameTuner />
+          </div>
+
+          <div className="panel-section">
+            <CanvasSizeEditor />
           </div>
 
           <div className="panel-section">
@@ -77,17 +83,24 @@ function App() {
         </div>
       </aside>
 
-      {/* CENTER - Canvas (Preview Only, No Scroll) */}
-      <main className="flex-1 h-full relative overflow-hidden bg-black/20 canvas-container flex flex-col">
-        <div className="flex-1 w-full grid place-items-center p-8 overflow-hidden">
-          <CanvasStage stageRef={stageRef} />
-        </div>
+      {/* CENTER - Canvas (Scrollable) */}
+      {/* CENTER - Canvas Area */}
+      {/* CENTER - Canvas Area */}
+      <div className="!p-2 flex-1 relative h-full bg-black/20 canvas-container flex flex-col overflow-hidden">
+        {/* Scrollable Viewport - Flex 1 to take available space */ }
+        <main className="flex-1 w-full relative !overflow-auto custom-scrollbar-solid min-h-0">
+          <div className="min-w-max min-h-full flex items-center justify-center">
+            <CanvasStage stageRef={stageRef} />
+          </div>
+        </main>
 
-        {/* Canvas Sequence Selector (Floating Bottom) */}
-        <div className="w-full pb-6 z-20 flex justify-center">
-          <CanvasSelector />
+        {/* Navbar - Static at bottom, pushes viewport up */}
+        <div className="w-full !pt-4 z-20 flex justify-center shrink-0 pointer-events-none">
+          <div className="pointer-events-auto">
+            <CanvasSelector />
+          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

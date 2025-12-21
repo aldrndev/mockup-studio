@@ -1,5 +1,5 @@
 export * from "./UploadZone";
-export * from "./DeviceSelector";
+export * from "./AddDevicePanel";
 export * from "./BackgroundPicker";
 export * from "./TextEditor";
 export * from "./CanvasStage";

@@ -391,7 +391,7 @@ function AndroidFrame({ meta, frame }: { meta: DeviceMeta; frame: Frame }) {
   );
 }
 
-function TabletFrame({ meta, frame }: { meta: DeviceMeta; frame: Frame }) {
+function TabletFrame({ meta, frame: _frame }: { meta: DeviceMeta; frame: Frame }) {
   const frameColor = "#1c1c1e";
   const borderColor = "#3a3a3c";
 
@@ -420,7 +420,7 @@ function TabletFrame({ meta, frame }: { meta: DeviceMeta; frame: Frame }) {
   );
 }
 
-function MacBookBody({ meta, frame }: { meta: DeviceMeta; frame: Frame }) {
+function MacBookBody({ meta, frame: _frame }: { meta: DeviceMeta; frame: Frame }) {
   const lidColor = "#27272a"; // Zinc-800
   const borderColor = "#3f3f46"; // Zinc-700
   const baseHeight = 16;
@@ -540,19 +540,40 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
     background,
     cutPreset,
     setActiveFrame,
+    canvasWidth,
+    canvasHeight,
   } = useEditorStore();
+
+  const [bgImage, setBgImage] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    if (background.type === "image" && background.imageUrl) {
+      const img = new Image();
+      img.src = background.imageUrl;
+      // img.crossOrigin = "Anonymous"; // If needed
+      img.onload = () => setBgImage(img);
+    } else {
+      setBgImage(null);
+    }
+  }, [background.type, background.imageUrl]);
+
 
   const { deviceMeta } = useCanvasRenderer(deviceType, null);
   const isDesktop = deviceType === "desktop";
 
   // Canvas dimensions - device + padding for text space
-  // Padding calculated to match App Store export ratio (1320 × 2868)
-  const paddingX = 92; // Calculated for 1320×2868 ratio
-  const paddingTop = 320; // Dedicated marketing text zone
+  // Use custom size if set, otherwise auto from device
+  const paddingX = 92;
+  const paddingTop = 320;
   const paddingBottom = 80;
-  const baseFrameWidth =
-    deviceMeta.frameWidth + paddingX * 2 + (isDesktop ? 80 : 0);
-  const stageHeight = deviceMeta.frameHeight + paddingTop + paddingBottom;
+  
+  // Base dimensions from device
+  const autoWidth = deviceMeta.frameWidth + paddingX * 2 + (isDesktop ? 80 : 0);
+  const autoHeight = deviceMeta.frameHeight + paddingTop + paddingBottom;
+  
+  // Apply custom canvas size if set
+  const baseFrameWidth = canvasWidth ?? autoWidth;
+  const stageHeight = canvasHeight ?? autoHeight;
 
   // Calculate Layout
   const layout = useMemo(
@@ -630,6 +651,40 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
               height={stageHeight}
               fill={background.color1}
             />
+          )}
+
+          {background.type === "image" && bgImage && (
+            (() => {
+               // Calculate "Cover" fit
+               const imgRatio = bgImage.width / bgImage.height;
+               const canvasRatio = totalStageWidth / stageHeight;
+               
+               let renderW, renderH, renderX, renderY;
+               
+               if (imgRatio > canvasRatio) {
+                 // Image is wider -> Match Display Height
+                 renderH = stageHeight;
+                 renderW = renderH * imgRatio;
+                 renderY = 0;
+                 renderX = (totalStageWidth - renderW) / 2;
+               } else {
+                 // Image is taller -> Match Display Width
+                 renderW = totalStageWidth;
+                 renderH = renderW / imgRatio;
+                 renderX = 0;
+                 renderY = (stageHeight - renderH) / 2;
+               }
+
+               return (
+                 <KonvaImage
+                   image={bgImage}
+                   width={renderW}
+                   height={renderH}
+                   x={renderX}
+                   y={renderY}
+                 />
+               );
+            })()
           )}
 
           {background.type === "gradient" && (
@@ -754,7 +809,7 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
 
         {/* FRAMES */}
         <Layer>
-          {layout.frames.map((frameLayout) => {
+          {layout.frames.map((frameLayout, index) => {
             const frame = frames.find((f) => f.id === frameLayout.id);
             if (!frame) return null;
 
@@ -763,13 +818,15 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
                 key={frame.id}
                 frame={frame}
                 isActive={frame.id === activeFrameId}
-                deviceType={deviceType}
+                deviceType={frame.deviceType}
                 x={frameLayout.x}
                 width={frameLayout.width}
                 height={frameLayout.height}
                 stageHeight={stageHeight}
                 backdrop={background.backdrop}
                 onTextDragEnd={handleTextDragEnd}
+                frameIndex={index}
+                totalFrames={layout.frames.length}
               />
             );
           })}
@@ -836,6 +893,8 @@ function FrameContent({
   stageHeight,
   backdrop,
   onTextDragEnd,
+  frameIndex,
+  totalFrames,
 }: {
   frame: Frame;
   width: number;
@@ -847,15 +906,40 @@ function FrameContent({
   backdrop?: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onTextDragEnd: (id: string, type: "headline" | "subtitle", e: any) => void;
+  frameIndex: number;
+  totalFrames: number;
 }) {
   const { screenshotImage, deviceMeta } = useCanvasRenderer(
     deviceType,
     frame.screenshot
   );
 
-  // Calculate centering within the frame
-  const deviceX = (width - deviceMeta.frameWidth) / 2;
-  const deviceY = 320;
+  // Calculate base centering within the frame
+  const baseCenterX = Math.round((width - deviceMeta.frameWidth) / 2);
+  
+  // CAROUSEL POSITIONING: Shift devices to create visual flow across frames
+  // For seamless carousel, devices should appear to flow/connect
+  let carouselOffset = 0;
+  if (totalFrames > 1) {
+    const overlapAmount = width * 0.15; // 15% overlap towards adjacent frame
+    if (frameIndex === 0) {
+      // First frame: shift device slightly right (towards next frame)
+      carouselOffset = overlapAmount;
+    } else if (frameIndex === totalFrames - 1) {
+      // Last frame: shift device slightly left (towards previous frame)
+      carouselOffset = -overlapAmount;
+    }
+    // Middle frames stay centered (carouselOffset = 0)
+  }
+  
+  const deviceX = baseCenterX + carouselOffset;
+  
+  // Calculate deviceY to center device vertically, with some top padding for text
+  const textPaddingTop = Math.min(120, stageHeight * 0.1);
+  const availableHeight = stageHeight - textPaddingTop;
+  
+  // Center device in available space
+  const deviceY = Math.round(textPaddingTop + (availableHeight - deviceMeta.frameHeight) / 2);
 
   // Calculate pivot point for rotation/scaling (Center of device)
   const centerX = deviceX + deviceMeta.frameWidth / 2 + (frame.offsetX || 0);
@@ -899,6 +983,7 @@ function FrameContent({
         <Rect
           width={width}
           height={stageHeight}
+          name="active-frame-border"
           stroke="#8b5cf6"
           strokeWidth={4}
           opacity={0.3}
@@ -941,6 +1026,8 @@ function FrameContent({
             Math.cos(((frame.rotateX || 0) * Math.PI) / 180)
           }
           rotation={frame.rotation}
+          skewX={Math.tan(((frame.skewX || 0) * Math.PI) / 180)}
+          skewY={Math.tan(((frame.skewY || 0) * Math.PI) / 180)}
           offset={{
             x: deviceMeta.frameWidth / 2,
             y: deviceMeta.frameHeight / 2,
