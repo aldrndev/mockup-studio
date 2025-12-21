@@ -104,17 +104,17 @@ export function calculateFrameLayout(
 
     case "even":
     default: {
-      // Standard grid
+      // Standard grid - ensure integer coordinates for pixel-perfect cuts
       for (let i = 0; i < count; i++) {
         frameLayouts.push({
           id: frames[i].id,
-          x: i * baseWidth,
+          x: Math.round(i * baseWidth),
           y: 0,
-          width: baseWidth,
-          height: baseHeight,
+          width: Math.round(baseWidth),
+          height: Math.round(baseHeight),
         });
       }
-      totalWidth = count * baseWidth;
+      totalWidth = Math.round(count * baseWidth);
       break;
     }
   }
