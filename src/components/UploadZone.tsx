@@ -45,7 +45,7 @@ export function UploadZone() {
   return (
     <div>
       <div className="flex justify-between items-center mb-2">
-        <span className="section-title !mb-2">Screenshot</span>
+        <span className="section-title mb-2!">Screenshot</span>
         {screenshot && (
           <button onClick={() => setScreenshot(null)} className="text-link">
             Clear

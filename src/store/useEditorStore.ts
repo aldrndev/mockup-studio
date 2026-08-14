@@ -1,80 +1,92 @@
 import { create } from "zustand";
-import type { DeviceType, ExportPresetKey } from "../types/device";
+import type {
+  DeviceType,
+  DeviceStyle,
+  DeviceColor,
+  ExportPresetKey,
+  VectorOverlayConfig,
+  PlayStoreBadgesConfig,
+  TextOverlay,
+} from "../types/device";
+import { PLAYSTORE_TEMPLATES } from "../utils/playstoreTemplates";
 
 // Editor Types
 export type BackgroundBase = "solid" | "gradient" | "image";
 export type BackgroundStyle = "none" | "radial" | "spotlight" | "beam";
 export type OverlayPattern = "none" | "noise" | "dots" | "grid";
+export type EditorTab = "templates" | "devices" | "backgrounds" | "marketing" | "canvas";
 
 export interface Background {
-  type: BackgroundBase; // Base layer (Solid/Gradient)
+  type: BackgroundBase; // Base layer (Solid/Gradient/Image)
   style: BackgroundStyle; // Effect layer (Glow/Spotlight/Beam)
   color1: string;
-  color2: string; // Used for gradient/radial secondary color
+  color2: string; // Used for gradient secondary color
   angle: number; // For linear gradient
   noise: number; // 0-1 opacity
   pattern: OverlayPattern;
-  vignette: boolean; // New: Subtle edge darkening
-  backdrop: boolean; // New: Soft panel behind device
+  vignette: boolean; // Subtle edge darkening
+  backdrop: boolean; // Soft panel behind device
   imageUrl?: string | null;
 }
 
 export const GRADIENT_PRESETS = [
-  { name: "Indigo Navy", c1: "#4f46e5", c2: "#1e1b4b" }, // Indigo-600 -> Indigo-950
-  { name: "Purple Slate", c1: "#9333ea", c2: "#0f172a" }, // Purple-600 -> Slate-900
-  { name: "Charcoal", c1: "#27272a", c2: "#09090b" }, // Zinc-800 -> Zinc-950
-  { name: "Blue Teal", c1: "#2563eb", c2: "#0f766e" }, // Blue-600 -> Teal-700
-  { name: "Midnight", c1: "#1e293b", c2: "#020617" }, // Slate-800 -> Slate-950
-  { name: "Royal", c1: "#4338ca", c2: "#2e1065" }, // Indigo-700 -> Violet-950
+  { name: "Indigo Slate", c1: "#4f46e5", c2: "#0f172a" },
+  { name: "Obsidian Purple", c1: "#6366f1", c2: "#020617" },
+  { name: "Deep Charcoal", c1: "#27272a", c2: "#09090b" },
+  { name: "Neon Cyberpunk", c1: "#ec4899", c2: "#1e1b4b" },
+  { name: "Emerald Tech", c1: "#059669", c2: "#022c22" },
+  { name: "Sunset Flame", c1: "#ea580c", c2: "#1c1917" },
+  { name: "Royal Violet", c1: "#7c3aed", c2: "#1e1b4b" },
+  { name: "Ocean Teal", c1: "#0284c7", c2: "#042f2e" },
+  { name: "Minimal Frost", c1: "#334155", c2: "#0f172a" },
 ];
 
-export interface TextOverlay {
-  id: string;
-  text: string;
-  x: number;
-  y: number;
-  fontSize: number;
-  fontFamily: string;
-  fontWeight: number;
-  fill: string;
-  type: "headline" | "subtitle";
-}
-
-// Text Presets (Restored)
-export type TextPreset = "appstore" | "startup" | "bold";
-
+import type { TextPreset } from "../types/device";
 export type CutPreset = "even" | "overlap" | "hero" | "diagonal";
-
-// Editor Modes
 export type EditorMode = "standard" | "custom";
 
 export interface Frame {
   id: string;
-  deviceType: DeviceType; // Per-frame device type
+  deviceType: DeviceType;
+  deviceStyle: DeviceStyle;
+  deviceColor: DeviceColor;
   screenshot: string | null;
   headline: TextOverlay;
   subtitle: TextOverlay;
   scale: number;
   rotation: number;
-  rotateX: number; // 3D Rotation (scale-based foreshortening)
-  rotateY: number; // 3D Rotation (scale-based foreshortening)
-  skewX: number; // Tilt X (skew-based distortion)
-  skewY: number; // Tilt Y (skew-based distortion)
-  flipX: boolean; // New: Horizontal Flip
-  flipY: boolean; // New: Vertical Flip
+  rotateX: number; // 3D Rotation X (Pitch)
+  rotateY: number; // 3D Rotation Y (Yaw)
+  depth?: number; // 3D Chassis Thickness in px (default: 54)
+  skewX: number; // Skew X
+  skewY: number; // Skew Y
+  flipX: boolean;
+  flipY: boolean;
   offsetX: number;
   offsetY: number;
-  showDevice: boolean; // New: Controls if device body is rendered
+  showDevice: boolean;
+  showShadow?: boolean;
+  showReflection?: boolean;
+  engine?: "three-3d" | "vector";
 }
 
 interface EditorState {
+  // Navigation & View
+  activeTab: EditorTab;
+  canvasZoom: number; // Scale factor for zoom preview (0.25 to 2)
+
   // Global Shared State
   deviceType: DeviceType;
+  deviceStyle: DeviceStyle;
+  deviceColor: DeviceColor;
   background: Background;
+  vectorOverlay: VectorOverlayConfig;
+  badges: PlayStoreBadgesConfig;
   textPreset: TextPreset;
   cutPreset: CutPreset;
   exportPreset: ExportPresetKey;
   editorMode: EditorMode;
+
   // Custom Canvas Size (null = auto from device)
   canvasWidth: number | null;
   canvasHeight: number | null;
@@ -83,15 +95,33 @@ interface EditorState {
   frames: Frame[];
   activeFrameId: string;
 
-  // Actions
-  // Global
+  // History & Undo / Redo
+  past: CanvasSnapshot[];
+  future: CanvasSnapshot[];
+  undo: () => void;
+  redo: () => void;
+  resetAll: () => void;
+
+  // Actions - Navigation & View
+  setActiveTab: (tab: EditorTab) => void;
+  setCanvasZoom: (zoom: number | ((prev: number) => number)) => void;
+
+  // Actions - Global
   setDeviceType: (type: DeviceType) => void;
+  setDeviceStyle: (style: DeviceStyle) => void;
+  setDeviceColor: (color: DeviceColor) => void;
   setBackground: (bg: Partial<Background>) => void;
+  setVectorOverlay: (vector: Partial<VectorOverlayConfig>) => void;
+  setBadges: (badges: Partial<PlayStoreBadgesConfig>) => void;
   setTextPreset: (preset: TextPreset) => void;
   setCutPreset: (preset: CutPreset) => void;
   setExportPreset: (preset: ExportPresetKey) => void;
   setEditorMode: (mode: EditorMode) => void;
   setCanvasSize: (width: number | null, height: number | null) => void;
+
+  // Actions - Templates & 3D Presets
+  applyTemplate: (templateId: string) => void;
+  applyAnglePreset: (preset: "front" | "isometric-left" | "isometric-right" | "floating-hero" | "perspective-tilt") => void;
 
   // Frame Management
   addFrame: (deviceType?: DeviceType) => void;
@@ -108,109 +138,310 @@ interface EditorState {
     rotation?: number;
     rotateX?: number;
     rotateY?: number;
+    depth?: number;
     skewX?: number;
     skewY?: number;
     flipX?: boolean;
     flipY?: boolean;
     offsetX?: number;
     offsetY?: number;
+    deviceType?: DeviceType;
+    deviceStyle?: DeviceStyle;
+    deviceColor?: DeviceColor;
+    showShadow?: boolean;
+    showReflection?: boolean;
+    engine?: "three-3d" | "vector";
   }) => void;
-  toggleFrameDevice: (id: string) => void; // New action to show/hide device manually
+  toggleFrameDevice: (id: string) => void;
 
   resetEditor: () => void;
 }
 
-const defaultHeadline: TextOverlay = {
+export interface CanvasSnapshot {
+  frames: Frame[];
+  activeFrameId: string;
+  deviceType: DeviceType;
+  deviceStyle: DeviceStyle;
+  deviceColor: DeviceColor;
+  background: Background;
+  vectorOverlay: VectorOverlayConfig;
+  badges: PlayStoreBadgesConfig;
+  textPreset: TextPreset;
+  canvasWidth: number | null;
+  canvasHeight: number | null;
+}
+
+const emptyHeadline: TextOverlay = {
   id: "headline",
   text: "",
   x: 0.5,
-  y: 0.07,
-  fontSize: 48,
+  y: 0.08,
+  fontSize: 56,
   fontFamily: "Poppins",
-  fontWeight: 700,
+  fontWeight: 800,
   fill: "#ffffff",
   type: "headline",
+  glow: false,
 };
 
-const defaultSubtitle: TextOverlay = {
+const emptySubtitle: TextOverlay = {
   id: "subtitle",
   text: "",
   x: 0.5,
-  y: 0.14,
+  y: 0.15,
   fontSize: 24,
   fontFamily: "Inter",
   fontWeight: 400,
-  fill: "#a1a1aa",
+  fill: "#94a3b8",
   type: "subtitle",
 };
 
-const defaultBackground: Background = {
-  type: "gradient",
+const emptyBackground: Background = {
+  type: "solid",
   style: "none",
-  color1: "#27272a",
-  color2: "#09090b",
-  angle: 135,
+  color1: "#0a0d14",
+  color2: "#0a0d14",
+  angle: 180,
   noise: 0,
   pattern: "none",
-  vignette: true,
+  vignette: false,
   backdrop: false,
+  imageUrl: null,
+};
+
+const emptyVectorOverlay: VectorOverlayConfig = {
+  type: "none",
+  color: "#6366f1",
+  secondaryColor: "#38bdf8",
+  opacity: 0,
+  scale: 1,
+  positionY: 0.5,
+};
+
+const emptyBadges: PlayStoreBadgesConfig = {
+  showRating: false,
+  ratingScore: 5.0,
+  ratingCount: "",
+  ratingStyle: "google-play",
+  ratingPosition: "top",
+  showDownloads: false,
+  downloadCount: "",
+  downloadIcon: "download",
+  showFeaturePills: false,
+  featurePills: [],
+  showFloatingShield: false,
 };
 
 const initialFrameId = crypto.randomUUID();
 
-export const useEditorStore = create<EditorState>((set) => ({
+const createInitialFrame = (id: string = initialFrameId): Frame => ({
+  id,
   deviceType: "iphone",
-  background: defaultBackground,
-  textPreset: "appstore",
-  cutPreset: "even",
-  exportPreset: "appstore",
-  editorMode: "standard",
-  canvasWidth: null, // null = auto from device
-  canvasHeight: null,
+  deviceStyle: "realistic",
+  deviceColor: "titanium-dark",
+  screenshot: null,
+  headline: { ...emptyHeadline },
+  subtitle: { ...emptySubtitle },
+  scale: 1.38,
+  rotation: 0,
+  rotateX: 0,
+  rotateY: 0,
+  skewX: 0,
+  skewY: 0,
+  flipX: false,
+  flipY: false,
+  offsetX: 0,
+  offsetY: 0,
+  showDevice: true,
+  showShadow: true,
+  showReflection: false,
+});
 
-  frames: [
-    {
-      id: initialFrameId,
-      deviceType: "iphone",
-      screenshot: null,
-      headline: defaultHeadline,
-      subtitle: defaultSubtitle,
-      scale: 1,
-      rotation: 0,
-      rotateX: 0,
-      rotateY: 0,
-      skewX: 0,
-      skewY: 0,
-      flipX: false,
-      flipY: false,
-      offsetX: 0,
-      offsetY: 0,
-      showDevice: true, // Auto-show for initial
-    },
-  ],
+const getSnapshot = (state: EditorState): CanvasSnapshot => ({
+  frames: JSON.parse(JSON.stringify(state.frames)),
+  activeFrameId: state.activeFrameId,
+  deviceType: state.deviceType,
+  deviceStyle: state.deviceStyle,
+  deviceColor: state.deviceColor,
+  background: { ...state.background },
+  vectorOverlay: { ...state.vectorOverlay },
+  badges: JSON.parse(JSON.stringify(state.badges)),
+  textPreset: state.textPreset,
+  canvasWidth: state.canvasWidth,
+  canvasHeight: state.canvasHeight,
+});
+
+export const useEditorStore = create<EditorState>((set, get) => ({
+  activeTab: "devices",
+  canvasZoom: 1,
+
+  // History Stacks
+  past: [],
+  future: [],
+
+  deviceType: "iphone",
+  deviceStyle: "realistic",
+  deviceColor: "titanium-dark",
+  background: emptyBackground,
+  vectorOverlay: emptyVectorOverlay,
+  badges: emptyBadges,
+  textPreset: "playstore-hero",
+  cutPreset: "even",
+  exportPreset: "playstore-phone",
+  editorMode: "standard",
+  canvasWidth: 1080,
+  canvasHeight: 2400,
+
+  frames: [createInitialFrame(initialFrameId)],
   activeFrameId: initialFrameId,
 
-  // Set device type for active frame only (per-frame device selection)
-  setDeviceType: (deviceType) =>
+  // Undo / Redo / Reset Actions
+  undo: () =>
+    set((state) => {
+      if (state.past.length === 0) return state;
+      const prevSnapshot = state.past[state.past.length - 1];
+      const newPast = state.past.slice(0, -1);
+      const currentSnapshot = getSnapshot(state);
+
+      return {
+        ...prevSnapshot,
+        past: newPast,
+        future: [currentSnapshot, ...state.future].slice(0, 30),
+      };
+    }),
+
+  redo: () =>
+    set((state) => {
+      if (state.future.length === 0) return state;
+      const nextSnapshot = state.future[0];
+      const newFuture = state.future.slice(1);
+      const currentSnapshot = getSnapshot(state);
+
+      return {
+        ...nextSnapshot,
+        past: [...state.past, currentSnapshot].slice(-30),
+        future: newFuture,
+      };
+    }),
+
+  resetAll: () =>
+    set((state) => {
+      const currentSnapshot = getSnapshot(state);
+      const newId = crypto.randomUUID();
+      return {
+        past: [...state.past, currentSnapshot].slice(-30),
+        future: [],
+        activeTab: "devices",
+        deviceType: "iphone",
+        deviceStyle: "realistic",
+        deviceColor: "titanium-dark",
+        background: { ...emptyBackground },
+        vectorOverlay: { ...emptyVectorOverlay },
+        badges: { ...emptyBadges },
+        canvasWidth: 1080,
+        canvasHeight: 2400,
+        frames: [createInitialFrame(newId)],
+        activeFrameId: newId,
+      };
+    }),
+
+  // Navigation & View Actions
+  setActiveTab: (activeTab) => set({ activeTab }),
+  setCanvasZoom: (zoom) =>
     set((state) => ({
-      deviceType, // Keep global for new frames
-      frames: state.frames.map((frame) =>
-        frame.id === state.activeFrameId
-          ? { ...frame, deviceType }
-          : frame
-      ),
+      canvasZoom: typeof zoom === "function" ? zoom(state.canvasZoom) : zoom,
     })),
 
+  // Global Setters with History Tracking
+  setDeviceType: (deviceType) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        deviceType,
+        frames: state.frames.map((f) =>
+          f.id === state.activeFrameId ? { ...f, deviceType } : f
+        ),
+      };
+    }),
+
+  setDeviceStyle: (deviceStyle) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        deviceStyle,
+        frames: state.frames.map((f) =>
+          f.id === state.activeFrameId ? { ...f, deviceStyle } : f
+        ),
+      };
+    }),
+
+  setDeviceColor: (deviceColor) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        deviceColor,
+        frames: state.frames.map((f) =>
+          f.id === state.activeFrameId ? { ...f, deviceColor } : f
+        ),
+      };
+    }),
+
   setBackground: (background) =>
-    set((state) => ({
-      background: { ...state.background, ...background },
-    })),
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        background: { ...state.background, ...background },
+      };
+    }),
+
+  setVectorOverlay: (vector) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        vectorOverlay: { ...state.vectorOverlay, ...vector },
+      };
+    }),
+
+  setBadges: (badges) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        badges: { ...state.badges, ...badges },
+      };
+    }),
 
   setTextPreset: (preset) => {
     const presets: Record<
       TextPreset,
       { headline: Partial<TextOverlay>; subtitle: Partial<TextOverlay> }
     > = {
+      "playstore-hero": {
+        headline: {
+          fontFamily: "Poppins",
+          fontWeight: 800,
+          fontSize: 52,
+          fill: "#ffffff",
+          highlightColor: "#818cf8",
+        },
+        subtitle: {
+          fontFamily: "Inter",
+          fontWeight: 400,
+          fontSize: 26,
+          fill: "#94a3b8",
+        },
+      },
       appstore: {
         headline: {
           fontFamily: "Poppins",
@@ -227,7 +458,7 @@ export const useEditorStore = create<EditorState>((set) => ({
       },
       startup: {
         headline: {
-          fontFamily: "Inter",
+          fontFamily: "Outfit",
           fontWeight: 800,
           fontSize: 52,
           fill: "#ffffff",
@@ -235,14 +466,14 @@ export const useEditorStore = create<EditorState>((set) => ({
         subtitle: {
           fontFamily: "Inter",
           fontWeight: 500,
-          fontSize: 22,
-          fill: "#d4d4d8",
+          fontSize: 24,
+          fill: "#cbd5e1",
         },
       },
       bold: {
         headline: {
           fontFamily: "Poppins",
-          fontWeight: 800,
+          fontWeight: 900,
           fontSize: 56,
           fill: "#fbbf24",
         },
@@ -253,10 +484,55 @@ export const useEditorStore = create<EditorState>((set) => ({
           fill: "#ffffff",
         },
       },
+      minimal: {
+        headline: {
+          fontFamily: "Inter",
+          fontWeight: 700,
+          fontSize: 44,
+          fill: "#ffffff",
+        },
+        subtitle: {
+          fontFamily: "Inter",
+          fontWeight: 400,
+          fontSize: 22,
+          fill: "#71717a",
+        },
+      },
+      "neon-glow": {
+        headline: {
+          fontFamily: "Poppins",
+          fontWeight: 800,
+          fontSize: 58,
+          fill: "#ffffff",
+          glow: true,
+          glowColor: "#d946ef",
+        },
+        subtitle: {
+          fontFamily: "Inter",
+          fontWeight: 500,
+          fontSize: 26,
+          fill: "#e2e8f0",
+        },
+      },
+      "cyber-cyan": {
+        headline: {
+          fontFamily: "Poppins",
+          fontWeight: 800,
+          fontSize: 60,
+          fill: "#ffffff",
+          glow: true,
+          glowColor: "#06b6d4",
+        },
+        subtitle: {
+          fontFamily: "Inter",
+          fontWeight: 500,
+          fontSize: 26,
+          fill: "#93c5fd",
+        },
+      },
     };
 
     set((state) => {
-      // Update ONLY active frame with new text style presets
       const updatedFrames = state.frames.map((frame) =>
         frame.id === state.activeFrameId
           ? {
@@ -277,59 +553,186 @@ export const useEditorStore = create<EditorState>((set) => ({
   setCutPreset: (preset) => set({ cutPreset: preset }),
   setExportPreset: (preset) => set({ exportPreset: preset }),
   setEditorMode: (mode) => set({ editorMode: mode }),
-  setCanvasSize: (width, height) => set({ canvasWidth: width, canvasHeight: height }),
+  setCanvasSize: (width, height) => {
+    const snapshot = getSnapshot(get());
+    set({
+      past: [...get().past, snapshot].slice(-30),
+      future: [],
+      canvasWidth: width,
+      canvasHeight: height,
+    });
+  },
 
-  // Frame Management
-  addFrame: (overrideDeviceType?: DeviceType) =>
+  // 1-Click Template Applier with History
+  applyTemplate: (templateId) => {
+    const template = PLAYSTORE_TEMPLATES.find((t) => t.id === templateId);
+    if (!template) return;
+
+    const snapshot = getSnapshot(get());
     set((state) => {
-      if (state.frames.length >= 8) return state; // Guardrail
-      const newId = crypto.randomUUID();
-      const showDevice = state.editorMode === "standard"; // Auto-show only in Standard
+      const updatedFrames = state.frames.map((frame) =>
+        frame.id === state.activeFrameId
+          ? {
+              ...frame,
+              deviceType: template.deviceType,
+              deviceStyle: template.deviceStyle,
+              deviceColor: template.deviceColor,
+              headline: {
+                ...frame.headline,
+                ...template.headline,
+                text: template.headline.text ?? frame.headline.text,
+              },
+              subtitle: {
+                ...frame.subtitle,
+                ...template.subtitle,
+                text: template.subtitle.text ?? frame.subtitle.text,
+              },
+              ...template.frameProps,
+            }
+          : frame
+      );
 
       return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        deviceType: template.deviceType,
+        deviceStyle: template.deviceStyle,
+        deviceColor: template.deviceColor,
+        background: { ...template.background },
+        vectorOverlay: { ...template.vectorOverlay },
+        badges: { ...template.badges },
+        canvasWidth: template.canvasWidth,
+        canvasHeight: template.canvasHeight,
+        frames: updatedFrames,
+      };
+    });
+  },
+
+  // 3D Angle Preset Applier with History
+  applyAnglePreset: (preset) => {
+    const angles = {
+      front: {
+        rotation: 0,
+        rotateX: 0,
+        rotateY: 0,
+        skewX: 0,
+        skewY: 0,
+        scale: 1,
+        offsetX: 0,
+        offsetY: 0,
+      },
+      "isometric-left": {
+        rotation: -4,
+        rotateX: 12,
+        rotateY: -16,
+        skewX: -2,
+        skewY: 2,
+        scale: 1.05,
+        offsetX: 0,
+        offsetY: 40,
+      },
+      "isometric-right": {
+        rotation: 4,
+        rotateX: 12,
+        rotateY: 16,
+        skewX: 2,
+        skewY: -2,
+        scale: 1.05,
+        offsetX: 0,
+        offsetY: 40,
+      },
+      "floating-hero": {
+        rotation: 0,
+        rotateX: 16,
+        rotateY: 0,
+        skewX: 0,
+        skewY: 0,
+        scale: 1.08,
+        offsetX: 0,
+        offsetY: 30,
+      },
+      "perspective-tilt": {
+        rotation: -8,
+        rotateX: 18,
+        rotateY: -22,
+        skewX: -4,
+        skewY: 4,
+        scale: 1.1,
+        offsetX: 0,
+        offsetY: 50,
+      },
+    };
+
+    const snapshot = getSnapshot(get());
+    set((state) => ({
+      past: [...state.past, snapshot].slice(-30),
+      future: [],
+      frames: state.frames.map((frame) =>
+        frame.id === state.activeFrameId
+          ? { ...frame, ...angles[preset] }
+          : frame
+      ),
+    }));
+  },
+
+  // Frame Management with History
+  addFrame: (overrideDeviceType) =>
+    set((state) => {
+      if (state.frames.length >= 8) return state;
+      const snapshot = getSnapshot(state);
+      const newId = crypto.randomUUID();
+      const currentActive = state.frames.find((f) => f.id === state.activeFrameId) || state.frames[0];
+
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
         frames: [
           ...state.frames,
           {
             id: newId,
-            deviceType: overrideDeviceType || state.deviceType, // Inherit current global device
+            deviceType: overrideDeviceType || state.deviceType,
+            deviceStyle: state.deviceStyle,
+            deviceColor: state.deviceColor,
             screenshot: null,
             headline: {
-              ...defaultHeadline,
-              ...state.frames[0].headline,
-              text: "",
-            }, // Copy style but clear text
-            subtitle: {
-              ...defaultSubtitle,
-              ...state.frames[0].subtitle,
+              ...emptyHeadline,
+              ...currentActive.headline,
               text: "",
             },
-            scale: 1,
-            rotation: 0,
-            rotateX: 0,
-            rotateY: 0,
-            skewX: 0,
-            skewY: 0,
+            subtitle: {
+              ...emptySubtitle,
+              ...currentActive.subtitle,
+              text: "",
+            },
+            scale: currentActive.scale,
+            rotation: currentActive.rotation,
+            rotateX: currentActive.rotateX,
+            rotateY: currentActive.rotateY,
+            skewX: currentActive.skewX,
+            skewY: currentActive.skewY,
             flipX: false,
             flipY: false,
             offsetX: 0,
-            offsetY: 0,
-            showDevice: showDevice,
+            offsetY: currentActive.offsetY,
+            showDevice: true,
           },
         ],
-        activeFrameId: newId, // Switch to new frame
+        activeFrameId: newId,
       };
     }),
 
   removeFrame: (id) =>
     set((state) => {
-      if (state.frames.length <= 1) return state; // Guardrail
+      if (state.frames.length <= 1) return state;
+      const snapshot = getSnapshot(state);
       const newFrames = state.frames.filter((c) => c.id !== id);
-      // If active frame removed, switch to last one
       const newActiveId =
         state.activeFrameId === id
           ? newFrames[newFrames.length - 1].id
           : state.activeFrameId;
       return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
         frames: newFrames,
         activeFrameId: newActiveId,
       };
@@ -339,81 +742,81 @@ export const useEditorStore = create<EditorState>((set) => ({
 
   reorderFrame: (fromIndex, toIndex) =>
     set((state) => {
+      const snapshot = getSnapshot(state);
       const newFrames = [...state.frames];
       const [moved] = newFrames.splice(fromIndex, 1);
       newFrames.splice(toIndex, 0, moved);
-      return { frames: newFrames };
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: newFrames,
+      };
     }),
 
-  // Active Frame Actions (Proxies)
+  // Active Frame Actions with History
   setScreenshot: (src) =>
-    set((state) => ({
-      frames: state.frames.map((c) =>
-        c.id === state.activeFrameId ? { ...c, screenshot: src } : c
-      ),
-    })),
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId ? { ...c, screenshot: src } : c
+        ),
+      };
+    }),
 
   setHeadline: (text) =>
-    set((state) => ({
-      frames: state.frames.map((c) =>
-        c.id === state.activeFrameId
-          ? { ...c, headline: { ...c.headline, ...text } }
-          : c
-      ),
-    })),
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? { ...c, headline: { ...c.headline, ...text } }
+            : c
+        ),
+      };
+    }),
 
   setSubtitle: (text) =>
-    set((state) => ({
-      frames: state.frames.map((c) =>
-        c.id === state.activeFrameId
-          ? { ...c, subtitle: { ...c.subtitle, ...text } }
-          : c
-      ),
-    })),
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? { ...c, subtitle: { ...c.subtitle, ...text } }
+            : c
+        ),
+      };
+    }),
 
   setFrameProperties: (props) =>
-    set((state) => ({
-      frames: state.frames.map((c) =>
-        c.id === state.activeFrameId ? { ...c, ...props } : c
-      ),
-    })),
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId ? { ...c, ...props } : c
+        ),
+      };
+    }),
 
   toggleFrameDevice: (id) =>
-    set((state) => ({
-      frames: state.frames.map((c) =>
-        c.id === id ? { ...c, showDevice: !c.showDevice } : c
-      ),
-    })),
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === id ? { ...c, showDevice: !c.showDevice } : c
+        ),
+      };
+    }),
 
-  resetEditor: () => {
-    const newId = crypto.randomUUID();
-    set({
-      deviceType: "iphone",
-      background: defaultBackground,
-      textPreset: "appstore",
-      exportPreset: "appstore",
-      editorMode: "standard",
-      frames: [
-        {
-          id: newId,
-          deviceType: "iphone",
-          screenshot: null,
-          headline: defaultHeadline,
-          subtitle: defaultSubtitle,
-          scale: 1,
-          rotation: 0,
-          rotateX: 0,
-          rotateY: 0,
-          skewX: 0,
-          skewY: 0,
-          flipX: false,
-          flipY: false,
-          offsetX: 0,
-          offsetY: 0,
-          showDevice: true,
-        },
-      ],
-      activeFrameId: newId,
-    });
-  },
+  resetEditor: () => get().resetAll(),
 }));

@@ -54,7 +54,7 @@ export function TextEditor() {
           value={headline.text}
           onChange={(e) => setHeadline({ text: e.target.value.slice(0, 80) })}
           placeholder="Your amazing headline"
-          className="form-input !h-11 !text-[14px] font-medium"
+          className="form-input h-11! text-[14px]! font-medium"
         />
       </div>
 
@@ -76,7 +76,7 @@ export function TextEditor() {
           value={subtitle.text}
           onChange={(e) => setSubtitle({ text: e.target.value.slice(0, 160) })}
           placeholder="Describe your app features..."
-          className="form-input !h-32 py-3 leading-relaxed resize-none !text-[13px]"
+          className="form-input h-32! py-3 leading-relaxed resize-none text-[13px]!"
         />
       </div>
 
@@ -100,14 +100,14 @@ export function TextEditor() {
         onClick={() => setShowColors(!showColors)}
         className="text-xs text-zinc-500 hover:text-zinc-400 mb-3 flex items-center gap-1 transition-colors"
       >
-        <span className="!mb-2">{showColors ? "-" : "+"}</span>
-        <span className="!mb-2">Text Settings</span>
+        <span className="mb-2!">{showColors ? "-" : "+"}</span>
+        <span className="mb-2!">Text Settings</span>
       </button>
 
       {showColors && (
         <div className="grid grid-cols-2 gap-x-4 gap-y-4 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800/50">
-          <div className="!p-2">
-            <span className="text-[11px] font-semibold text-zinc-400 !mb-2 block uppercase tracking-wide">
+          <div className="p-2!">
+            <span className="text-[11px] font-semibold text-zinc-400 mb-2! block uppercase tracking-wide">
               Headline
             </span>
             <div className="flex flex-col gap-2">
@@ -128,10 +128,10 @@ export function TextEditor() {
                   type="text"
                   value={headline.fill}
                   onChange={(e) => setHeadline({ fill: e.target.value })}
-                  className="color-picker-input !w-full"
+                  className="color-picker-input w-full!"
                 />
               </div>
-              <div className="!p-2 flex items-center gap-2 bg-zinc-800/50 rounded px-2 h-7 border border-zinc-800">
+              <div className="p-2! flex items-center gap-2 bg-zinc-800/50 rounded px-2 h-7 border border-zinc-800">
                 <span className="text-[10px] text-zinc-500">Size</span>
                 <input
                   type="number"
@@ -156,8 +156,8 @@ export function TextEditor() {
             </div>
           </div>
 
-          <div className="!p-2">
-            <span className="text-[11px] font-semibold text-zinc-400 !mb-2 block uppercase tracking-wide">
+          <div className="p-2!">
+            <span className="text-[11px] font-semibold text-zinc-400 mb-2! block uppercase tracking-wide">
               Subtitle
             </span>
             <div className="flex flex-col gap-2">
@@ -178,10 +178,10 @@ export function TextEditor() {
                   type="text"
                   value={subtitle.fill}
                   onChange={(e) => setSubtitle({ fill: e.target.value })}
-                  className="color-picker-input !w-full"
+                  className="color-picker-input w-full!"
                 />
               </div>
-              <div className="!p-2 flex items-center gap-2 bg-zinc-800/50 rounded px-2 h-7 border border-zinc-800">
+              <div className="p-2! flex items-center gap-2 bg-zinc-800/50 rounded px-2 h-7 border border-zinc-800">
                 <span className="text-[10px] text-zinc-500">Size</span>
                 <input
                   type="number"
