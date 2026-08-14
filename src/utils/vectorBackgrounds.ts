@@ -169,49 +169,95 @@ export function generateFloatingCards(width: number, height: number, scale = 1) 
   ];
 }
 
-export const VECTOR_PRESETS: {
+export type VectorCategory = "all" | "cyber" | "fluid" | "geometric" | "minimal";
+
+export interface VectorPresetItem {
   type: VectorBackgroundType;
   label: string;
   desc: string;
+  category: "cyber" | "fluid" | "geometric" | "minimal";
   defaultColor: string;
   defaultSecondary?: string;
   defaultOpacity: number;
-}[] = [
+}
+
+export const VECTOR_PRESETS: VectorPresetItem[] = [
   {
     type: "none",
     label: "Clean Minimal",
     desc: "Solid gradient without overlays",
+    category: "minimal",
     defaultColor: "#6366f1",
     defaultOpacity: 0,
   },
   {
     type: "studio-floor",
-    label: "Studio Podium & Horizon",
-    desc: "Neon horizon line with glossy floor reflection",
+    label: "Studio Horizon & Floor",
+    desc: "Neon horizon line with glossy dark floor reflection",
+    category: "cyber",
     defaultColor: "#d946ef",
     defaultSecondary: "#06b6d4",
     defaultOpacity: 0.85,
   },
   {
     type: "cyber-circuit",
-    label: "Cyber Circuit PCB",
-    desc: "High-tech PCB traces and glowing nodes",
+    label: "Cyber PCB Circuit",
+    desc: "High-tech motherboard traces and glowing nodes",
+    category: "cyber",
     defaultColor: "#06b6d4",
     defaultSecondary: "#818cf8",
     defaultOpacity: 0.45,
   },
   {
+    type: "synthwave-grid",
+    label: "3D Synthwave Sun & Grid",
+    desc: "Retro 80s perspective ground grid & glowing neon sun",
+    category: "cyber",
+    defaultColor: "#f43f5e",
+    defaultSecondary: "#06b6d4",
+    defaultOpacity: 0.75,
+  },
+  {
     type: "neon-beams",
     label: "Neon Laser Beams",
     desc: "Vibrant laser streaks cutting across corners",
+    category: "cyber",
     defaultColor: "#d946ef",
     defaultSecondary: "#06b6d4",
     defaultOpacity: 0.65,
   },
   {
+    type: "honeycomb-hex",
+    label: "Cyber Honeycomb Mesh",
+    desc: "Futuristic glowing hexagon matrix cells",
+    category: "cyber",
+    defaultColor: "#38bdf8",
+    defaultSecondary: "#6366f1",
+    defaultOpacity: 0.4,
+  },
+  {
+    type: "speed-vortex",
+    label: "Radial Speed Vortex",
+    desc: "Dynamic warp-speed tunnel bursting from center",
+    category: "cyber",
+    defaultColor: "#a855f7",
+    defaultSecondary: "#06b6d4",
+    defaultOpacity: 0.5,
+  },
+  {
+    type: "audio-equalizer",
+    label: "Audio Waves & Equalizer",
+    desc: "Dynamic digital frequency audio bars at the base",
+    category: "cyber",
+    defaultColor: "#10b981",
+    defaultSecondary: "#06b6d4",
+    defaultOpacity: 0.6,
+  },
+  {
     type: "aurora",
     label: "Aurora Mesh Glow",
     desc: "Soft ambient multi-color glow blobs",
+    category: "fluid",
     defaultColor: "#8b5cf6",
     defaultSecondary: "#38bdf8",
     defaultOpacity: 0.4,
@@ -220,38 +266,97 @@ export const VECTOR_PRESETS: {
     type: "waves",
     label: "Fluid Wave Ribbons",
     desc: "Smooth flowing vector curved ribbons",
+    category: "fluid",
     defaultColor: "#6366f1",
     defaultSecondary: "#ec4899",
     defaultOpacity: 0.35,
   },
   {
+    type: "organic-blobs",
+    label: "Liquid Morph Blobs",
+    desc: "Organic fluid droplets and liquid shapes",
+    category: "fluid",
+    defaultColor: "#ec4899",
+    defaultSecondary: "#8b5cf6",
+    defaultOpacity: 0.45,
+  },
+  {
+    type: "circle-ripples",
+    label: "Sonar Radar & Ripples",
+    desc: "Concentric circular ripple pulse rings",
+    category: "fluid",
+    defaultColor: "#06b6d4",
+    defaultSecondary: "#3b82f6",
+    defaultOpacity: 0.35,
+  },
+  {
+    type: "stardust-particles",
+    label: "Galaxy Stardust & Stars",
+    desc: "Floating star particles, sparkles, and constellation lines",
+    category: "fluid",
+    defaultColor: "#facc15",
+    defaultSecondary: "#e879f9",
+    defaultOpacity: 0.5,
+  },
+  {
     type: "stage-podium",
     label: "Glowing Podium Stage",
     desc: "Illuminated stage dome behind phone",
+    category: "geometric",
     defaultColor: "#4f46e5",
     defaultSecondary: "#a855f7",
     defaultOpacity: 0.5,
   },
   {
+    type: "isometric-cards",
+    label: "Floating 3D Glass Tiles",
+    desc: "Glassmorphism cards floating in 3D perspective",
+    category: "geometric",
+    defaultColor: "#818cf8",
+    defaultSecondary: "#c084fc",
+    defaultOpacity: 0.3,
+  },
+  {
+    type: "geometric-shards",
+    label: "Crystal Shards & Prisms",
+    desc: "Faceted geometric polygons & diamond crystals",
+    category: "geometric",
+    defaultColor: "#38bdf8",
+    defaultSecondary: "#ec4899",
+    defaultOpacity: 0.35,
+  },
+  {
+    type: "sunburst-rays",
+    label: "Promotional Sunburst",
+    desc: "Dynamic radial promo rays radiating from hero",
+    category: "geometric",
+    defaultColor: "#f59e0b",
+    defaultSecondary: "#ea580c",
+    defaultOpacity: 0.25,
+  },
+  {
+    type: "diagonal-stripes",
+    label: "Velocity Slash Stripes",
+    desc: "Sporty angled speed ribbons cutting the canvas",
+    category: "geometric",
+    defaultColor: "#ef4444",
+    defaultSecondary: "#f97316",
+    defaultOpacity: 0.3,
+  },
+  {
     type: "modern-grid",
     label: "Cyber Tech Grid",
     desc: "Subtle isometric matrix grid",
+    category: "minimal",
     defaultColor: "#6366f1",
     defaultOpacity: 0.25,
   },
   {
     type: "dot-matrix",
     label: "Digital Dot Matrix",
-    desc: "Geometric dot array pattern",
+    desc: "Geometric dot array pattern with radial falloff",
+    category: "minimal",
     defaultColor: "#94a3b8",
     defaultOpacity: 0.2,
-  },
-  {
-    type: "isometric-cards",
-    label: "Floating 3D Tiles",
-    desc: "Glassmorphism cards floating in 3D",
-    defaultColor: "#818cf8",
-    defaultSecondary: "#c084fc",
-    defaultOpacity: 0.3,
   },
 ];

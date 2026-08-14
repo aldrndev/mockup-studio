@@ -50,9 +50,11 @@ export const CanvasSettingsPanel: React.FC<CanvasSettingsPanelProps> = ({ stageR
   const { deviceMeta } = useCanvasRenderer(deviceType, null);
 
   const [exporting, setExporting] = useState(false);
+  const [exportingKit, setExportingKit] = useState(false);
   const [exportMode, setExportMode] = useState<"batch" | "single">("batch");
   const [exportScale, setExportScale] = useState<number>(1); // 1x or 2x
   const [copiedSuccess, setCopiedSuccess] = useState(false);
+  const [kitSuccess, setKitSuccess] = useState(false);
 
   const isDesktop = deviceType === "desktop";
   const paddingX = 92;
@@ -196,6 +198,116 @@ export const CanvasSettingsPanel: React.FC<CanvasSettingsPanelProps> = ({ stageR
     exportMode,
     exportScale,
   ]);
+
+  const handleExportMarketingKit = useCallback(async () => {
+    if (!stageRef.current) return;
+    setExportingKit(true);
+    await new Promise((r) => setTimeout(r, 100));
+
+    const stage = stageRef.current;
+    const oldScaleX = stage.scaleX();
+    const oldScaleY = stage.scaleY();
+    stage.scale({ x: 1, y: 1 });
+
+    const layers = stage.getLayers();
+    const guidesLayer = layers[layers.length - 1];
+    guidesLayer.hide();
+    const selectionBorders = stage.find(".active-frame-border");
+    selectionBorders.forEach((node) => node.hide());
+
+    const zip = new JSZip();
+    const now = new Date();
+    const timestamp = `${String(now.getDate()).padStart(2, "0")}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getFullYear()).slice(-2)}`;
+
+    try {
+      // 1. Current Stage Export (Phone standard)
+      const phoneDataUrl = stage.toDataURL({ pixelRatio: 1, mimeType: "image/png" });
+      zip.file(
+        "01-playstore-phone-1080x2400.png",
+        phoneDataUrl.replace(/^data:image\/png;base64,/, ""),
+        { base64: true }
+      );
+
+      const phoneImg = new Image();
+      phoneImg.src = phoneDataUrl;
+      await new Promise<void>((res) => {
+        phoneImg.onload = () => res();
+      });
+
+      // 2. Play Store Feature Graphic (1024x500)
+      const fgCanvas = document.createElement("canvas");
+      fgCanvas.width = 1024;
+      fgCanvas.height = 500;
+      const fgCtx = fgCanvas.getContext("2d")!;
+      fgCtx.drawImage(phoneImg, 0, 0, phoneImg.width, phoneImg.height, 0, 0, 1024, 500);
+      zip.file(
+        "02-playstore-feature-graphic-1024x500.png",
+        fgCanvas.toDataURL("image/png").replace(/^data:image\/png;base64,/, ""),
+        { base64: true }
+      );
+
+      // 3. Tablet 10-inch (1600x2560)
+      const tabCanvas = document.createElement("canvas");
+      tabCanvas.width = 1600;
+      tabCanvas.height = 2560;
+      const tabCtx = tabCanvas.getContext("2d")!;
+      tabCtx.drawImage(phoneImg, 0, 0, phoneImg.width, phoneImg.height, 0, 0, 1600, 2560);
+      zip.file(
+        "03-playstore-tablet-1600x2560.png",
+        tabCanvas.toDataURL("image/png").replace(/^data:image\/png;base64,/, ""),
+        { base64: true }
+      );
+
+      // 4. iOS App Store (1290x2796)
+      const iosCanvas = document.createElement("canvas");
+      iosCanvas.width = 1290;
+      iosCanvas.height = 2796;
+      const iosCtx = iosCanvas.getContext("2d")!;
+      iosCtx.drawImage(phoneImg, 0, 0, phoneImg.width, phoneImg.height, 0, 0, 1290, 2796);
+      zip.file(
+        "04-appstore-ios-1290x2796.png",
+        iosCanvas.toDataURL("image/png").replace(/^data:image\/png;base64,/, ""),
+        { base64: true }
+      );
+
+      // 5. App Icon (512x512)
+      const iconCanvas = document.createElement("canvas");
+      iconCanvas.width = 512;
+      iconCanvas.height = 512;
+      const iconCtx = iconCanvas.getContext("2d")!;
+      iconCtx.fillStyle = "#0f172a";
+      iconCtx.fillRect(0, 0, 512, 512);
+
+      const appIconUrl = frames[0]?.appIcon?.url;
+      if (appIconUrl) {
+        const iconImg = new Image();
+        iconImg.src = appIconUrl;
+        await new Promise<void>((res) => {
+          iconImg.onload = () => res();
+        });
+        iconCtx.drawImage(iconImg, 32, 32, 448, 448);
+      } else {
+        iconCtx.drawImage(phoneImg, 0, 0, 512, 512);
+      }
+      zip.file(
+        "05-app-icon-512x512.png",
+        iconCanvas.toDataURL("image/png").replace(/^data:image\/png;base64,/, ""),
+        { base64: true }
+      );
+
+      const content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, `Marketing-Kit-All-Formats-${timestamp}.zip`);
+      setKitSuccess(true);
+      setTimeout(() => setKitSuccess(false), 2500);
+    } catch (err) {
+      console.error("Marketing Kit export error:", err);
+    } finally {
+      guidesLayer.show();
+      selectionBorders.forEach((node) => node.show());
+      stage.scale({ x: oldScaleX, y: oldScaleY });
+      setExportingKit(false);
+    }
+  }, [stageRef, frames]);
 
   return (
     <div className="p-4 space-y-6">
@@ -386,10 +498,10 @@ export const CanvasSettingsPanel: React.FC<CanvasSettingsPanelProps> = ({ stageR
           </div>
         </div>
 
-        {/* Big Export Button */}
+        {/* Standard Export Button */}
         <button
           onClick={handleExport}
-          disabled={exporting || frames.length === 0}
+          disabled={exporting || exportingKit || frames.length === 0}
           className="w-full h-12 rounded-xl bg-linear-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {exporting ? (
@@ -416,6 +528,43 @@ export const CanvasSettingsPanel: React.FC<CanvasSettingsPanelProps> = ({ stageR
             </div>
           )}
         </button>
+
+        {/* 1-Click Multi-Format Marketing Kit Exporter */}
+        <div className="pt-2 border-t border-zinc-800/80 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-zinc-300">
+              1-Click Multi-Format Kit
+            </span>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              BUNDLE ALL SIZES
+            </span>
+          </div>
+          <p className="text-[10px] text-zinc-500">
+            Exports 5 files in 1 ZIP: Phone 1080×2400, Feature Graphic 1024×500, Tablet 1600×2560, iOS 1290×2796, and Icon 512×512.
+          </p>
+          <button
+            onClick={handleExportMarketingKit}
+            disabled={exporting || exportingKit || frames.length === 0}
+            className="w-full h-11 rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+          >
+            {exportingKit ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Generating All Resolutions...</span>
+              </div>
+            ) : kitSuccess ? (
+              <div className="flex items-center gap-2 text-white">
+                <Check size={16} />
+                <span>Kit Downloaded Successfully!</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Download size={16} />
+                <span>Download Multi-Format Marketing Kit (ZIP)</span>
+              </div>
+            )}
+          </button>
+        </div>
       </section>
     </div>
   );

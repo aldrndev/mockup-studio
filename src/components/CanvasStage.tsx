@@ -15,10 +15,22 @@ import { useEditorStore } from "../store/useEditorStore";
 import { useCanvasRenderer } from "../canvas/useCanvasRenderer";
 import type { Frame } from "../store/useEditorStore";
 import { fitImageToMask } from "../canvas/fitImageToMask";
-import type { DeviceMeta, DeviceType, DeviceColor } from "../types/device";
+import type {
+  DeviceMeta,
+  DeviceType,
+  DeviceColor,
+  SecondaryDeviceConfig,
+  AppIconConfig,
+  StoreBadgeType,
+  PromoStickerConfig,
+  TestimonialConfig,
+  FloatingElementConfig,
+  FloatingBarItem,
+} from "../types/device";
 import { VectorBackgroundLayer } from "./canvas/VectorBackgroundLayer";
 import { PlayStoreBadgesLayer } from "./canvas/PlayStoreBadgesLayer";
 import { calculateFrameLayout } from "../utils/frameLayout";
+import { loadImage } from "../utils/loadImage";
 import {
   createNoiseImage,
   createDotPattern,
@@ -1340,7 +1352,8 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
 
   const totalStageWidth = layout.totalWidth;
 
-  const maxDisplayHeight = 650;
+  // Responsive stage scaling that fits comfortably between header and footer
+  const maxDisplayHeight = 520;
   const baseScale = Math.min(maxDisplayHeight / stageHeight, 1);
   const finalScale = baseScale * canvasZoom;
 
@@ -1655,6 +1668,1171 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
   );
 }
 
+// -------------------------------------------------------------
+// STUDIO PRO CANVAS COMPONENTS (Glare, Dual Phone, App Icon, Badges, 3D Floating)
+// -------------------------------------------------------------
+
+function ScreenGlassGlare({
+  meta,
+  opacity = 0.35,
+  style = "diagonal-curved",
+}: {
+  meta: DeviceMeta;
+  opacity?: number;
+  style?: string;
+}) {
+  return (
+    <Shape
+      sceneFunc={(ctx, shape) => {
+        const sw = meta.screen.width;
+        const sh = meta.screen.height;
+        const sx = meta.screen.x;
+        const sy = meta.screen.y;
+        ctx.beginPath();
+        if (style === "linear-streak") {
+          ctx.moveTo(sx + sw * 0.2, sy);
+          ctx.lineTo(sx + sw * 0.5, sy);
+          ctx.lineTo(sx + sw * 0.2, sy + sh);
+          ctx.lineTo(sx - 50, sy + sh);
+        } else {
+          // Curved diagonal gloss
+          ctx.moveTo(sx - 40, sy);
+          ctx.lineTo(sx + sw * 0.8, sy);
+          ctx.bezierCurveTo(
+            sx + sw * 0.6,
+            sy + sh * 0.35,
+            sx + sw * 0.35,
+            sy + sh * 0.65,
+            sx - 40,
+            sy + sh * 0.85
+          );
+        }
+        ctx.closePath();
+        ctx.fillStrokeShape(shape);
+      }}
+      fillLinearGradientStartPoint={{
+        x: meta.screen.x,
+        y: meta.screen.y,
+      }}
+      fillLinearGradientEndPoint={{
+        x: meta.screen.x + meta.screen.width * 0.85,
+        y: meta.screen.y + meta.screen.height * 0.85,
+      }}
+      fillLinearGradientColorStops={[
+        0,
+        "rgba(255, 255, 255, 0.48)",
+        0.25,
+        "rgba(255, 255, 255, 0.22)",
+        0.6,
+        "rgba(255, 255, 255, 0.05)",
+        1,
+        "transparent",
+      ]}
+      opacity={opacity}
+      listening={false}
+    />
+  );
+}
+
+function SecondaryDeviceLayer({
+  config,
+  parentCenterX,
+  parentCenterY,
+  isActive,
+}: {
+  config: SecondaryDeviceConfig;
+  parentCenterX: number;
+  parentCenterY: number;
+  parentMeta: DeviceMeta;
+  isActive: boolean;
+}) {
+  const { screenshotImage, deviceMeta } = useCanvasRenderer(
+    config.deviceType,
+    config.screenshot
+  );
+
+  const secX = parentCenterX + (config.offsetX ?? -200);
+  const secY = parentCenterY + (config.offsetY ?? 40);
+  const secScale = config.scale ?? 0.88;
+  const secRotateY = config.rotateY ?? -15;
+  const secRotateX = config.rotateX ?? 8;
+  const secRotation = config.rotation ?? -6;
+
+  const screenshotFit = useMemo(() => {
+    if (!screenshotImage) return null;
+    return fitImageToMask(
+      screenshotImage.width,
+      screenshotImage.height,
+      deviceMeta.screen
+    );
+  }, [screenshotImage, deviceMeta.screen]);
+
+  const secFrame: Frame = useMemo(
+    () => ({
+      id: "sec",
+      deviceType: config.deviceType,
+      deviceStyle: "realistic",
+      deviceColor: config.deviceColor,
+      screenshot: config.screenshot,
+      headline: { id: "h", text: "", x: 0, y: 0, fontSize: 0, fontFamily: "", fontWeight: 400, fill: "", type: "headline" },
+      subtitle: { id: "s", text: "", x: 0, y: 0, fontSize: 0, fontFamily: "", fontWeight: 400, fill: "", type: "subtitle" },
+      scale: secScale,
+      rotation: secRotation,
+      rotateX: secRotateX,
+      rotateY: secRotateY,
+      depth: config.depth || 46,
+      skewX: 0,
+      skewY: 0,
+      flipX: false,
+      flipY: false,
+      offsetX: 0,
+      offsetY: 0,
+      showDevice: true,
+      showShadow: true,
+    }),
+    [config, secScale, secRotation, secRotateX, secRotateY]
+  );
+
+  return (
+    <Group
+      x={secX}
+      y={secY}
+      scaleX={secScale * Math.cos((secRotateY * Math.PI) / 180)}
+      scaleY={secScale * Math.cos((secRotateX * Math.PI) / 180)}
+      rotation={secRotation}
+      offset={{
+        x: deviceMeta.frameWidth / 2,
+        y: deviceMeta.frameHeight / 2,
+      }}
+      draggable={isActive}
+      onDragEnd={(e) => {
+        const newX = e.target.x();
+        const newY = e.target.y();
+        useEditorStore.getState().setSecondaryDevice({
+          offsetX: Math.round(newX - parentCenterX),
+          offsetY: Math.round(newY - parentCenterY),
+        });
+      }}
+    >
+      <DeviceBody meta={deviceMeta} deviceType={config.deviceType} frame={secFrame} />
+      <Group
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        clipFunc={(ctx: any) => {
+          const r = deviceMeta.screen.radius;
+          const sx = deviceMeta.screen.x;
+          const sy = deviceMeta.screen.y;
+          const sw = deviceMeta.screen.width;
+          const sh = deviceMeta.screen.height;
+          ctx.beginPath();
+          ctx.moveTo(sx + r, sy);
+          ctx.arcTo(sx + sw, sy, sx + sw, sy + sh, r);
+          ctx.arcTo(sx + sw, sy + sh, sx, sy + sh, r);
+          ctx.arcTo(sx, sy + sh, sx, sy, r);
+          ctx.arcTo(sx, sy, sx + sw, sy, r);
+          ctx.closePath();
+        }}
+      >
+        {screenshotImage && screenshotFit ? (
+          <KonvaImage
+            image={screenshotImage}
+            x={screenshotFit.x}
+            y={screenshotFit.y}
+            width={screenshotFit.width}
+            height={screenshotFit.height}
+          />
+        ) : (
+          <MockupScreenPlaceholder meta={deviceMeta} />
+        )}
+      </Group>
+      <DeviceOverlay meta={deviceMeta} deviceType={config.deviceType} frame={secFrame} />
+    </Group>
+  );
+}
+
+function AppIconOverlay({
+  config,
+  canvasWidth,
+  stageHeight,
+  isActive,
+}: {
+  config: AppIconConfig;
+  canvasWidth: number;
+  stageHeight: number;
+  isActive: boolean;
+}) {
+  const [img, setImg] = useState<HTMLImageElement | null>(null);
+  const size = config.size || 84;
+  const posX = (config.x ?? 0.5) * canvasWidth;
+  const posY = (config.y ?? 0.05) * stageHeight;
+
+  useEffect(() => {
+    let active = true;
+    if (config.url) {
+      loadImage(config.url)
+        .then((loaded) => {
+          if (active) setImg(loaded);
+        })
+        .catch(() => {
+          if (active) setImg(null);
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [config.url]);
+
+  const displayImg = config.url ? img : null;
+
+  return (
+    <Group
+      x={posX}
+      y={posY}
+      offsetX={size / 2}
+      offsetY={size / 2}
+      draggable={isActive}
+      onDragEnd={(e) => {
+        const newCenterX = e.target.x() / canvasWidth;
+        const newCenterY = e.target.y() / stageHeight;
+        useEditorStore.getState().setAppIcon({
+          x: Math.max(0.02, Math.min(0.98, newCenterX)),
+          y: Math.max(0.02, Math.min(0.98, newCenterY)),
+        });
+      }}
+    >
+      {/* Ambient App Icon Drop Shadow */}
+      <Rect
+        x={0}
+        y={4}
+        width={size}
+        height={size}
+        cornerRadius={config.shape === "circle" ? size / 2 : size * 0.22}
+        fill="rgba(0,0,0,0.5)"
+        shadowColor="rgba(0,0,0,0.8)"
+        shadowBlur={24}
+        shadowOpacity={0.65}
+        shadowOffsetY={8}
+      />
+      {/* Icon Squircle / Circle Container */}
+      <Group
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        clipFunc={(ctx: any) => {
+          const r = config.shape === "circle" ? size / 2 : size * 0.22;
+          ctx.beginPath();
+          ctx.moveTo(r, 0);
+          ctx.arcTo(size, 0, size, size, r);
+          ctx.arcTo(size, size, 0, size, r);
+          ctx.arcTo(0, size, 0, 0, r);
+          ctx.arcTo(0, 0, size, 0, r);
+          ctx.closePath();
+        }}
+      >
+        {displayImg ? (
+          <KonvaImage image={displayImg} width={size} height={size} />
+        ) : (
+          <Group>
+            <Rect
+              width={size}
+              height={size}
+              fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+              fillLinearGradientEndPoint={{ x: size, y: size }}
+              fillLinearGradientColorStops={[0, "#6366f1", 1, "#a855f7"]}
+            />
+            <Text
+              text="APP"
+              fontSize={size * 0.28}
+              fontFamily="Poppins"
+              fontStyle="bold"
+              fill="white"
+              width={size}
+              height={size}
+              align="center"
+              verticalAlign="middle"
+            />
+          </Group>
+        )}
+      </Group>
+      {/* Border & Gloss Rim */}
+      <Rect
+        width={size}
+        height={size}
+        cornerRadius={config.shape === "circle" ? size / 2 : size * 0.22}
+        stroke="rgba(255,255,255,0.3)"
+        strokeWidth={1.5}
+      />
+    </Group>
+  );
+}
+
+function OfficialStoreBadgeOverlay({
+  badgeType,
+  canvasWidth,
+  canvasHeight,
+  storeBadgeX,
+  storeBadgeY,
+  isActive,
+}: {
+  badgeType: StoreBadgeType;
+  canvasWidth: number;
+  canvasHeight: number;
+  storeBadgeX?: number;
+  storeBadgeY?: number;
+  isActive: boolean;
+}) {
+  if (badgeType === "none") return null;
+
+  const isBoth = badgeType === "both";
+  const badgeWidth = 175;
+  const badgeHeight = 52;
+  const totalWidth = isBoth ? badgeWidth * 2 + 16 : badgeWidth;
+  const posX = (storeBadgeX ?? 0.5) * canvasWidth;
+  const posY = (storeBadgeY ?? 0.94) * canvasHeight;
+
+  return (
+    <Group
+      x={posX}
+      y={posY}
+      offsetX={totalWidth / 2}
+      offsetY={badgeHeight / 2}
+      draggable={isActive}
+      onDragEnd={(e) => {
+        const newRelX = e.target.x() / canvasWidth;
+        const newRelY = e.target.y() / canvasHeight;
+        useEditorStore.getState().setStoreBadgePosition(
+          Math.max(0.05, Math.min(0.95, newRelX)),
+          Math.max(0.05, Math.min(0.95, newRelY))
+        );
+      }}
+    >
+      {(badgeType === "google-play" || isBoth) && (
+        <Group x={0}>
+          {/* Google Play Badge */}
+          <Rect
+            width={badgeWidth}
+            height={badgeHeight}
+            cornerRadius={10}
+            fill="#000000"
+            stroke="rgba(255, 255, 255, 0.28)"
+            strokeWidth={1.2}
+            shadowColor="black"
+            shadowBlur={16}
+            shadowOpacity={0.6}
+            shadowOffsetY={4}
+          />
+          {/* Play Triangle Logo */}
+          <Shape
+            sceneFunc={(ctx, shape) => {
+              ctx.beginPath();
+              ctx.moveTo(18, 14);
+              ctx.lineTo(36, 26);
+              ctx.lineTo(18, 38);
+              ctx.closePath();
+              ctx.fillStrokeShape(shape);
+            }}
+            fillLinearGradientStartPoint={{ x: 18, y: 14 }}
+            fillLinearGradientEndPoint={{ x: 36, y: 38 }}
+            fillLinearGradientColorStops={[0, "#00c3ff", 0.5, "#00e676", 1, "#ff334b"]}
+          />
+          <Text
+            x={44}
+            y={10}
+            text="GET IT ON"
+            fontSize={9}
+            fontFamily="Inter"
+            fontStyle="bold"
+            fill="#94a3b8"
+          />
+          <Text
+            x={44}
+            y={22}
+            text="Google Play"
+            fontSize={15}
+            fontFamily="Inter"
+            fontStyle="bold"
+            fill="#ffffff"
+          />
+        </Group>
+      )}
+
+      {(badgeType === "app-store" || isBoth) && (
+        <Group x={isBoth ? badgeWidth + 16 : 0}>
+          {/* App Store Badge */}
+          <Rect
+            width={badgeWidth}
+            height={badgeHeight}
+            cornerRadius={10}
+            fill="#000000"
+            stroke="rgba(255, 255, 255, 0.28)"
+            strokeWidth={1.2}
+            shadowColor="black"
+            shadowBlur={16}
+            shadowOpacity={0.6}
+            shadowOffsetY={4}
+          />
+          {/* Apple Logo Icon */}
+          <Text
+            x={16}
+            y={12}
+            text=""
+            fontSize={26}
+            fontFamily="Inter"
+            fill="#ffffff"
+          />
+          <Text
+            x={46}
+            y={10}
+            text="Download on the"
+            fontSize={9}
+            fontFamily="Inter"
+            fontStyle="bold"
+            fill="#94a3b8"
+          />
+          <Text
+            x={46}
+            y={22}
+            text="App Store"
+            fontSize={15}
+            fontFamily="Inter"
+            fontStyle="bold"
+            fill="#ffffff"
+          />
+        </Group>
+      )}
+    </Group>
+  );
+}
+
+function PromoStickerOverlay({
+  config,
+  canvasWidth,
+  canvasHeight,
+  isActive,
+}: {
+  config: PromoStickerConfig;
+  canvasWidth: number;
+  canvasHeight: number;
+  isActive: boolean;
+}) {
+  if (!config.enabled || !config.text) return null;
+
+  const themePalettes: Record<string, { bg1: string; bg2: string; stroke: string; text: string; glow: string }> = {
+    gold: { bg1: "#f59e0b", bg2: "#d97706", stroke: "#fef08a", text: "#451a03", glow: "#f59e0b" },
+    indigo: { bg1: "#6366f1", bg2: "#4f46e5", stroke: "#c7d2fe", text: "#ffffff", glow: "#6366f1" },
+    emerald: { bg1: "#10b981", bg2: "#059669", stroke: "#a7f3d0", text: "#022c22", glow: "#10b981" },
+    rose: { bg1: "#f43f5e", bg2: "#e11d48", stroke: "#fecdd3", text: "#ffffff", glow: "#f43f5e" },
+    cyber: { bg1: "#06b6d4", bg2: "#3b82f6", stroke: "#a5f3fc", text: "#082f49", glow: "#06b6d4" },
+  };
+
+  const theme = themePalettes[config.theme] || themePalettes.gold;
+  const paddingX = 18;
+  const badgeWidth = Math.max(160, config.text.length * 10 + paddingX * 2 + 30);
+  const badgeHeight = 44;
+
+  let posX = (config.x ?? 0.5) * canvasWidth;
+  let posY = (config.y ?? 0.42) * canvasHeight;
+
+  if (config.position === "top-right") {
+    posX = canvasWidth - badgeWidth / 2 - 40;
+    posY = 80 + badgeHeight / 2;
+  } else if (config.position === "top-left") {
+    posX = 40 + badgeWidth / 2;
+    posY = 80 + badgeHeight / 2;
+  } else if (config.position === "bottom-right") {
+    posX = canvasWidth - badgeWidth / 2 - 40;
+    posY = canvasHeight - 140 + badgeHeight / 2;
+  } else if (config.position === "bottom-left") {
+    posX = 40 + badgeWidth / 2;
+    posY = canvasHeight - 140 + badgeHeight / 2;
+  }
+
+  const iconSymbol =
+    config.icon === "trophy" ? "🏆" :
+    config.icon === "star" ? "⭐" :
+    config.icon === "award" ? "🎖️" :
+    config.icon === "flame" ? "🔥" :
+    config.icon === "shield" ? "🛡️" : "🏷️";
+  const depth = config.depth ?? 8;
+  const rot = config.rotation ?? 0;
+  const rX = config.rotateX ?? 0;
+  const rY = config.rotateY ?? 0;
+  const radX = (rX * Math.PI) / 180;
+  const radY = (rY * Math.PI) / 180;
+  const skewX = -Math.sin(radY) * 0.45;
+  const skewY = Math.sin(radX) * 0.2;
+  const scaleY = Math.max(0.35, Math.cos(radX));
+  const dx = -Math.sin(radY) * (depth * 0.75);
+  const dy = Math.sin(radX) * (depth * 0.75);
+
+  return (
+    <Group
+      x={posX}
+      y={posY}
+      offsetX={badgeWidth / 2}
+      offsetY={badgeHeight / 2}
+      rotation={rot}
+      skewX={skewX}
+      skewY={skewY}
+      scaleY={scaleY}
+      draggable={isActive}
+      onDragEnd={(e) => {
+        const newRelX = e.target.x() / canvasWidth;
+        const newRelY = e.target.y() / canvasHeight;
+        useEditorStore.getState().setPromoSticker({
+          x: Math.max(0.05, Math.min(0.95, newRelX)),
+          y: Math.max(0.05, Math.min(0.95, newRelY)),
+          position: "custom",
+        });
+      }}
+    >
+      {/* Ambient Shadow */}
+      <Rect
+        x={dx * 1.1}
+        y={dy * 1.1 + (Math.abs(dy) > 0.1 ? 0 : 3)}
+        width={badgeWidth}
+        height={badgeHeight}
+        cornerRadius={22}
+        fill="rgba(0,0,0,0.4)"
+        shadowColor={theme.glow}
+        shadowBlur={16 + depth * 0.6}
+        shadowOpacity={0.6}
+        shadowOffsetY={6 + (Math.abs(dy) > 0.1 ? dy * 0.5 : depth * 0.3)}
+        shadowOffsetX={dx * 0.5}
+      />
+      {/* 3D Depth Chassis (Emerges when tilted in 3D) */}
+      {depth > 0 && (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) && (
+        <Group>
+          {[0.75, 0.5, 0.25].map((frac, idx) => (
+            <Rect
+              key={`promo-depth-${idx}`}
+              x={dx * frac}
+              y={dy * frac}
+              width={badgeWidth}
+              height={badgeHeight}
+              cornerRadius={22}
+              fill={theme.bg2}
+              opacity={0.9}
+            />
+          ))}
+        </Group>
+      )}
+      {/* Main Pill Surface */}
+      <Rect
+        width={badgeWidth}
+        height={badgeHeight}
+        cornerRadius={22}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: badgeWidth, y: badgeHeight }}
+        fillLinearGradientColorStops={[0, theme.bg1, 1, theme.bg2]}
+        stroke={theme.stroke}
+        strokeWidth={1.5}
+        shadowColor="rgba(0,0,0,0.15)"
+        shadowBlur={6}
+        shadowOffsetY={2}
+      />
+      {/* Icon */}
+      <Text
+        x={12}
+        y={10}
+        text={iconSymbol}
+        fontSize={20}
+        fontFamily="Inter"
+      />
+      {/* Text */}
+      <Text
+        x={40}
+        y={13}
+        text={config.text}
+        fontSize={14}
+        fontFamily="Poppins"
+        fontStyle="bold"
+        fill={theme.text}
+        width={badgeWidth - 50}
+      />
+    </Group>
+  );
+}
+
+function TestimonialOverlay({
+  config,
+  canvasWidth,
+  canvasHeight,
+  isActive,
+}: {
+  config: TestimonialConfig;
+  canvasWidth: number;
+  canvasHeight: number;
+  isActive: boolean;
+}) {
+  if (!config.enabled || !config.review) return null;
+
+  const cardWidth = Math.min(380, canvasWidth * 0.85);
+  const cardHeight = 110;
+  const posX = (config.x ?? 0.5) * canvasWidth;
+  const posY = (config.y ?? 0.88) * canvasHeight;
+  const depth = config.depth ?? 10;
+  const rot = config.rotation ?? 0;
+  const rX = config.rotateX ?? 0;
+  const rY = config.rotateY ?? 0;
+  const radX = (rX * Math.PI) / 180;
+  const radY = (rY * Math.PI) / 180;
+  const skewX = -Math.sin(radY) * 0.45;
+  const skewY = Math.sin(radX) * 0.2;
+  const scaleY = Math.max(0.35, Math.cos(radX));
+  const dx = -Math.sin(radY) * (depth * 0.75);
+  const dy = Math.sin(radX) * (depth * 0.75);
+
+  return (
+    <Group
+      x={posX}
+      y={posY}
+      offsetX={cardWidth / 2}
+      offsetY={cardHeight / 2}
+      rotation={rot}
+      skewX={skewX}
+      skewY={skewY}
+      scaleY={scaleY}
+      draggable={isActive}
+      onDragEnd={(e) => {
+        const newRelX = e.target.x() / canvasWidth;
+        const newRelY = e.target.y() / canvasHeight;
+        useEditorStore.getState().setTestimonial({
+          x: Math.max(0.05, Math.min(0.95, newRelX)),
+          y: Math.max(0.05, Math.min(0.95, newRelY)),
+        });
+      }}
+    >
+      {/* Ambient Shadow */}
+      <Rect
+        x={dx * 1.1}
+        y={dy * 1.1 + (Math.abs(dy) > 0.1 ? 0 : 4)}
+        width={cardWidth}
+        height={cardHeight}
+        cornerRadius={18}
+        fill="rgba(0,0,0,0.4)"
+        shadowColor="black"
+        shadowBlur={20 + depth * 0.6}
+        shadowOpacity={0.6}
+        shadowOffsetY={8 + (Math.abs(dy) > 0.1 ? dy * 0.5 : depth * 0.3)}
+        shadowOffsetX={dx * 0.5}
+      />
+      {/* 3D Depth Chassis (Emerges when tilted in 3D) */}
+      {depth > 0 && (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) && (
+        <Group>
+          {[0.75, 0.5, 0.25].map((frac, idx) => (
+            <Rect
+              key={`card-depth-${idx}`}
+              x={dx * frac}
+              y={dy * frac}
+              width={cardWidth}
+              height={cardHeight}
+              cornerRadius={18}
+              fill="rgba(15, 23, 42, 0.8)"
+              stroke="rgba(255, 255, 255, 0.1)"
+              strokeWidth={1}
+            />
+          ))}
+        </Group>
+      )}
+      {/* Glassmorphism Bubble Surface */}
+      <Rect
+        width={cardWidth}
+        height={cardHeight}
+        cornerRadius={18}
+        fillLinearGradientStartPoint={{ x: 0, y: 0 }}
+        fillLinearGradientEndPoint={{ x: 0, y: cardHeight }}
+        fillLinearGradientColorStops={[
+          0, "rgba(255, 255, 255, 0.16)",
+          1, "rgba(255, 255, 255, 0.05)",
+        ]}
+        stroke="rgba(255, 255, 255, 0.3)"
+        strokeWidth={1.2}
+      />
+      {/* Stars */}
+      <Text
+        x={16}
+        y={14}
+        text={"★".repeat(Math.max(1, Math.min(5, config.rating || 5)))}
+        fontSize={16}
+        fontFamily="Inter"
+        fontStyle="bold"
+        fill="#f59e0b"
+      />
+      {/* Review quote */}
+      <Text
+        x={16}
+        y={38}
+        text={`"${config.review}"`}
+        fontSize={13}
+        fontFamily="Inter"
+        fontStyle="italic"
+        fill="#ffffff"
+        width={cardWidth - 32}
+        lineHeight={1.25}
+      />
+      {/* User name */}
+      <Text
+        x={16}
+        y={80}
+        text={`— ${config.name}${config.handle ? ` (${config.handle})` : ""}`}
+        fontSize={11}
+        fontFamily="Inter"
+        fontStyle="bold"
+        fill="#94a3b8"
+        width={cardWidth - 32}
+      />
+    </Group>
+  );
+}
+
+// -------------------------------------------------------------
+// 3D FLOATING ACTION BARS & FEATURE PILLS (As seen in Reference Image)
+// -------------------------------------------------------------
+
+function FloatingActionBarsLayer({
+  bars,
+  canvasWidth,
+  canvasHeight,
+  phoneRotation,
+  phoneRotateX,
+  phoneRotateY,
+  isActive,
+}: {
+  bars: FloatingBarItem[];
+  canvasWidth: number;
+  canvasHeight: number;
+  phoneRotation: number;
+  phoneRotateX: number;
+  phoneRotateY: number;
+  isActive: boolean;
+}) {
+  if (!bars || bars.length === 0) return null;
+
+  return (
+    <Group>
+      {bars.map((bar) => (
+        <FloatingActionBarSingle
+          key={bar.id}
+          bar={bar}
+          canvasWidth={canvasWidth}
+          canvasHeight={canvasHeight}
+          phoneRotation={phoneRotation}
+          phoneRotateX={phoneRotateX}
+          phoneRotateY={phoneRotateY}
+          isActive={isActive}
+        />
+      ))}
+    </Group>
+  );
+}
+
+function FloatingActionBarSingle({
+  bar,
+  canvasWidth,
+  canvasHeight,
+  phoneRotation,
+  phoneRotateX,
+  phoneRotateY,
+  isActive,
+}: {
+  bar: FloatingBarItem;
+  canvasWidth: number;
+  canvasHeight: number;
+  phoneRotation: number;
+  phoneRotateX: number;
+  phoneRotateY: number;
+  isActive: boolean;
+}) {
+  const scale = bar.scale ?? 1;
+  const paddingX = 18 * scale;
+  const textLen = bar.text.length;
+  const barWidth = Math.max(170 * scale, textLen * 9.5 * scale + paddingX * 2 + 36 * scale);
+  const barHeight = 52 * scale;
+  const cornerRadius = 16 * scale;
+  const depth = bar.depth ?? 10;
+
+  const posX = bar.x * canvasWidth;
+  const posY = bar.y * canvasHeight;
+
+  // 3D Angle Calculations matching Device 3D Tuner
+  const usePhone3D = bar.syncWithPhone3D === true;
+  const rot = (usePhone3D ? phoneRotation : 0) + (bar.rotation ?? 0);
+  const rX = usePhone3D ? phoneRotateX + (bar.rotateX ?? 0) : (bar.rotateX ?? 0);
+  const rY = usePhone3D ? phoneRotateY + (bar.rotateY ?? 0) : (bar.rotateY ?? 0);
+
+  const radX = (rX * Math.PI) / 180;
+  const radY = (rY * Math.PI) / 180;
+
+  const skewX = -Math.sin(radY) * 0.45;
+  const skewY = Math.sin(radX) * 0.2;
+  const scaleY = Math.max(0.35, Math.cos(radX));
+  const dx = -Math.sin(radY) * (depth * 0.85);
+  const dy = Math.sin(radX) * (depth * 0.85);
+
+  const bgColor = bar.bgColor || "#ffffff";
+  const textColor = bar.textColor || "#0f172a";
+  const isLight = bgColor === "#ffffff" || bgColor.toLowerCase().startsWith("#f");
+  const chassisColor = isLight ? "#cbd5e1" : "#1e293b";
+  const chassisBottom = isLight ? "#94a3b8" : "#0f172a";
+
+  const iconName = bar.icon || "calendar";
+  const iconEmoji =
+    iconName === "calendar" ? "🗓️" :
+    iconName === "wand" ? "🪄" :
+    iconName === "file" ? "📄" :
+    iconName === "clock" ? "⏱️" :
+    iconName === "check" ? "⏱️" :
+    iconName === "sparkles" ? "✨" :
+    iconName === "zap" ? "⚡" :
+    iconName === "shield" ? "🔒" :
+    iconName === "rocket" ? "🚀" :
+    iconName === "heart" ? "❤️" :
+    iconName === "chat" ? "💬" :
+    iconName === "brain" ? "🧠" :
+    iconName === "flame" ? "🔥" :
+    iconName === "chart" ? "📈" :
+    iconName === "star" ? "⭐" :
+    iconName === "user" ? "👤" :
+    iconName === "mail" ? "✉️" :
+    iconName === "search" ? "🔍" : "🏷️";
+
+  return (
+    <Group
+      x={posX}
+      y={posY}
+      offsetX={barWidth / 2}
+      offsetY={barHeight / 2}
+      rotation={rot}
+      skewX={skewX}
+      skewY={skewY}
+      scaleY={scaleY}
+      draggable={isActive}
+      onDragEnd={(e) => {
+        const newRelX = e.target.x() / canvasWidth;
+        const newRelY = e.target.y() / canvasHeight;
+        useEditorStore.getState().updateFloatingBar(bar.id, {
+          x: Math.max(0.02, Math.min(0.98, newRelX)),
+          y: Math.max(0.02, Math.min(0.98, newRelY)),
+        });
+      }}
+    >
+      {/* 1. Multi-Stage Realistic Ambient Occlusion & Ground Shadow */}
+      <Rect
+        x={dx * 1.1}
+        y={dy * 1.1 + (Math.abs(dy) > 0.1 ? 0 : 3)}
+        width={barWidth}
+        height={barHeight}
+        cornerRadius={cornerRadius}
+        fill="rgba(0, 0, 0, 0.4)"
+        shadowColor="rgba(0, 0, 0, 0.6)"
+        shadowBlur={16 + depth * 0.5}
+        shadowOffsetY={6 + (Math.abs(dy) > 0.1 ? dy * 0.5 : depth * 0.3)}
+        shadowOffsetX={dx * 0.5}
+        shadowOpacity={0.5}
+      />
+
+      {/* 2. Realistic 3D Extruded Bevel / Chassis Depth Slices (Emerges when tilted in 3D) */}
+      {depth > 0 && (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) && (
+        <Group>
+          {[0.8, 0.6, 0.4, 0.2].map((fraction, i) => (
+            <Rect
+              key={`depth-slab-${i}`}
+              x={dx * fraction}
+              y={dy * fraction}
+              width={barWidth}
+              height={barHeight}
+              cornerRadius={cornerRadius}
+              fill={i === 0 ? chassisBottom : chassisColor}
+              stroke="rgba(0,0,0,0.12)"
+              strokeWidth={0.5}
+            />
+          ))}
+        </Group>
+      )}
+
+      {/* 3. Top Glossy Face Surface */}
+      <Rect
+        x={0}
+        y={0}
+        width={barWidth}
+        height={barHeight}
+        cornerRadius={cornerRadius}
+        fill={bgColor}
+        stroke={bar.borderColor || (isLight ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.15)")}
+        strokeWidth={1.5}
+        shadowColor="rgba(0,0,0,0.1)"
+        shadowBlur={8}
+        shadowOffsetY={2}
+      />
+
+      {/* 4. Icon */}
+      <Text
+        x={12 * scale}
+        y={12 * scale}
+        text={iconEmoji}
+        fontSize={22 * scale}
+        fontFamily="Inter"
+      />
+
+      {/* 5. Clean Bold Text */}
+      <Text
+        x={44 * scale}
+        y={16 * scale}
+        text={bar.text}
+        fontSize={14 * scale}
+        fontFamily="Poppins"
+        fontStyle="bold"
+        fill={textColor}
+        width={barWidth - 54 * scale}
+        wrap="none"
+        ellipsis={true}
+      />
+    </Group>
+  );
+}
+
+function FloatingElementsLayer({
+  elements,
+  canvasWidth,
+  canvasHeight,
+  isActive,
+}: {
+  elements: FloatingElementConfig[];
+  canvasWidth: number;
+  canvasHeight: number;
+  isActive: boolean;
+}) {
+  if (!elements || elements.length === 0) return null;
+
+  return (
+    <Group>
+      {elements.map((el) => (
+        <FloatingSingleElement
+          key={el.id}
+          element={el}
+          canvasWidth={canvasWidth}
+          canvasHeight={canvasHeight}
+          isActive={isActive}
+        />
+      ))}
+    </Group>
+  );
+}
+
+function FloatingSingleElement({
+  element,
+  canvasWidth,
+  canvasHeight,
+  isActive,
+}: {
+  element: FloatingElementConfig;
+  canvasWidth: number;
+  canvasHeight: number;
+  isActive: boolean;
+}) {
+  const posX = element.x * canvasWidth;
+  const posY = element.y * canvasHeight;
+  const scale = element.scale || 1;
+  const rotation = element.rotation || 0;
+  const opacity = element.opacity ?? 1;
+
+  const rX = element.rotateX || 0;
+  const rY = element.rotateY || 0;
+  const radX = (rX * Math.PI) / 180;
+  const radY = (rY * Math.PI) / 180;
+  const skewX = -Math.sin(radY) * 0.45;
+  const skewY = Math.sin(radX) * 0.2;
+  const scaleY = Math.max(0.35, Math.cos(radX)) * scale;
+  const scaleX = Math.max(0.35, Math.cos(radY)) * scale;
+  const depth = element.depth || 0;
+  const dx = -Math.sin(radY) * (depth * 0.7);
+  const dy = Math.sin(radX) * (depth * 0.7);
+
+  const [img, setImg] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (element.type === "image" && element.value) {
+      loadImage(element.value)
+        .then((loaded) => {
+          if (active) setImg(loaded);
+        })
+        .catch(() => {
+          if (active) setImg(null);
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [element.type, element.value]);
+
+  const displayImg = element.type === "image" && element.value ? img : null;
+
+  return (
+    <Group
+      x={posX}
+      y={posY}
+      scaleX={scaleX}
+      scaleY={scaleY}
+      skewX={skewX}
+      skewY={skewY}
+      rotation={rotation}
+      opacity={opacity}
+      shadowColor="rgba(0,0,0,0.7)"
+      shadowBlur={24 * scale + depth}
+      shadowOffsetY={12 * scale + dy}
+      shadowOffsetX={dx}
+      shadowOpacity={0.6}
+      draggable={isActive}
+      onDragEnd={(e) => {
+        const newRelX = e.target.x() / canvasWidth;
+        const newRelY = e.target.y() / canvasHeight;
+        useEditorStore.getState().updateFloatingElement(element.id, {
+          x: Math.max(0.02, Math.min(0.98, newRelX)),
+          y: Math.max(0.02, Math.min(0.98, newRelY)),
+        });
+      }}
+    >
+      {element.type === "preset" && (
+        <Shape
+          sceneFunc={(ctx, shape) => {
+            drawPreset3DIcon(ctx, element.value, 60);
+            ctx.fillStrokeShape(shape);
+          }}
+        />
+      )}
+      {element.type === "emoji" && (
+        <Text
+          text={element.value}
+          fontSize={52}
+          fontFamily="Inter"
+          offsetX={26}
+          offsetY={26}
+        />
+      )}
+      {element.type === "image" && displayImg && (
+        <KonvaImage
+          image={displayImg}
+          width={70}
+          height={70}
+          offsetX={35}
+          offsetY={35}
+        />
+      )}
+    </Group>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function drawPreset3DIcon(ctx: any, presetId: string, size: number) {
+  const half = size / 2;
+  ctx.save();
+  ctx.translate(-half, -half);
+
+  if (presetId === "gold-coin") {
+    ctx.beginPath();
+    ctx.arc(half, half, half * 0.9, 0, Math.PI * 2);
+    const grad = ctx.createLinearGradient(0, 0, size, size);
+    grad.addColorStop(0, "#fde047");
+    grad.addColorStop(0.5, "#eab308");
+    grad.addColorStop(1, "#a16207");
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = "#fef08a";
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(half, half, half * 0.65, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(113, 63, 18, 0.4)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = "#713f12";
+    ctx.font = `bold ${Math.round(size * 0.42)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("$", half, half);
+  } else if (presetId === "diamond") {
+    ctx.beginPath();
+    ctx.moveTo(half * 0.5, half * 0.4);
+    ctx.lineTo(half * 1.5, half * 0.4);
+    ctx.lineTo(half * 1.9, half * 0.9);
+    ctx.lineTo(half, half * 1.9);
+    ctx.lineTo(half * 0.1, half * 0.9);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0, 0, size, size);
+    g.addColorStop(0, "#38bdf8");
+    g.addColorStop(0.5, "#0284c7");
+    g.addColorStop(1, "#0369a1");
+    ctx.fillStyle = g;
+    ctx.fill();
+    ctx.strokeStyle = "#bae6fd";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else if (presetId === "rocket") {
+    ctx.fillStyle = "#f43f5e";
+    ctx.beginPath();
+    ctx.arc(half, half, half * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `${Math.round(size * 0.55)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🚀", half, half);
+  } else if (presetId === "shield") {
+    ctx.fillStyle = "#10b981";
+    ctx.beginPath();
+    ctx.arc(half, half, half * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `${Math.round(size * 0.55)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("🔒", half, half);
+  } else if (presetId === "lightning") {
+    ctx.fillStyle = "#eab308";
+    ctx.beginPath();
+    ctx.arc(half, half, half * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `${Math.round(size * 0.55)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("⚡", half, half);
+  } else if (presetId === "heart") {
+    ctx.fillStyle = "#ec4899";
+    ctx.beginPath();
+    ctx.arc(half, half, half * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `${Math.round(size * 0.55)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("❤️", half, half);
+  } else if (presetId === "chart") {
+    ctx.fillStyle = "#6366f1";
+    ctx.beginPath();
+    ctx.arc(half, half, half * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `${Math.round(size * 0.55)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("📈", half, half);
+  } else {
+    ctx.fillStyle = "#f59e0b";
+    ctx.beginPath();
+    ctx.arc(half, half, half * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `${Math.round(size * 0.55)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("⭐", half, half);
+  }
+
+  ctx.restore();
+}
+
 function FrameContent({
   frame,
   isActive,
@@ -1818,6 +2996,17 @@ function FrameContent({
         </Group>
       )}
 
+      {/* DUAL DEVICE COMPOSITION: Secondary Device Layer (Behind Primary) */}
+      {frame.secondaryDevice?.enabled && (
+        <SecondaryDeviceLayer
+          config={frame.secondaryDevice}
+          parentCenterX={centerX}
+          parentCenterY={centerY}
+          parentMeta={deviceMeta}
+          isActive={isActive}
+        />
+      )}
+
       {/* 3D Glossy Floor Mirror Reflection (Flipped downwards) */}
       {frame.showDevice !== false && frame.showReflection === true && (
         <Group
@@ -1919,9 +3108,83 @@ function FrameContent({
             ) : (
               <MockupScreenPlaceholder meta={deviceMeta} />
             )}
+
+            {/* Screen Glass Glare Sheen Reflection */}
+            {frame.screenGlare?.enabled && (
+              <ScreenGlassGlare
+                meta={deviceMeta}
+                opacity={frame.screenGlare.opacity}
+                style={frame.screenGlare.style}
+              />
+            )}
           </Group>
           <DeviceOverlay meta={deviceMeta} deviceType={deviceType} frame={frame} />
         </Group>
+      )}
+
+      {/* APP ICON OVERLAY */}
+      {frame.appIcon?.enabled && (
+        <AppIconOverlay
+          config={frame.appIcon}
+          canvasWidth={width}
+          stageHeight={stageHeight}
+          isActive={isActive}
+        />
+      )}
+
+      {/* PROMO STICKER / FLOATING BADGE */}
+      {frame.promoSticker?.enabled && (
+        <PromoStickerOverlay
+          config={frame.promoSticker}
+          canvasWidth={width}
+          canvasHeight={stageHeight}
+          isActive={isActive}
+        />
+      )}
+
+      {/* TESTIMONIAL REVIEW CARD */}
+      {frame.testimonial?.enabled && (
+        <TestimonialOverlay
+          config={frame.testimonial}
+          canvasWidth={width}
+          canvasHeight={stageHeight}
+          isActive={isActive}
+        />
+      )}
+
+      {/* OFFICIAL APP STORE & GOOGLE PLAY BADGES */}
+      {frame.storeBadge && frame.storeBadge !== "none" && (
+        <OfficialStoreBadgeOverlay
+          badgeType={frame.storeBadge}
+          canvasWidth={width}
+          canvasHeight={stageHeight}
+          storeBadgeX={frame.storeBadgeX}
+          storeBadgeY={frame.storeBadgeY}
+          isActive={isActive}
+        />
+      )}
+
+      {/* 3D FLOATING ELEMENTS (Coins, Rockets, Shields, Emojis, PNGs) */}
+      {frame.floatingElements && frame.floatingElements.length > 0 && (
+        <FloatingElementsLayer
+          elements={frame.floatingElements}
+          canvasWidth={width}
+          canvasHeight={stageHeight}
+          isActive={isActive}
+        />
+      )}
+
+      {/* 3D FLOATING ACTION BARS & FEATURE PILLS (As seen in Reference Image) */}
+      {frame.floatingBars && frame.floatingBars.length > 0 && (
+        <FloatingActionBarsLayer
+          bars={frame.floatingBars}
+          canvasWidth={width}
+          canvasHeight={stageHeight}
+          phoneRotation={frame.rotation || 0}
+          phoneRotateX={frame.rotateX || 0}
+          phoneRotateY={frame.rotateY || 0}
+          isActive={isActive}
+        />
       )}
 
       {/* MARKETING TEXT LAYER */}

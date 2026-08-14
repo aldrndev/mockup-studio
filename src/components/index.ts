@@ -6,4 +6,7 @@ export * from "./panels/TemplatesPanel";
 export * from "./panels/DevicesPanel";
 export * from "./panels/VectorBackgroundPanel";
 export * from "./panels/MarketingBadgesPanel";
+export * from "./panels/FloatingElementsPanel";
+export * from "./panels/CanvasPanel";
+export * from "./panels/ExportPanel";
 export * from "./panels/CanvasSettingsPanel";

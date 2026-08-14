@@ -6,7 +6,6 @@ import {
   Plus,
   Trash2,
   Sparkles,
-  Shield,
   Sliders,
   ChevronDown,
   ChevronUp,
@@ -25,7 +24,7 @@ const FONT_FAMILIES = [
 ];
 
 const TEXT_STYLES: { key: TextPreset; label: string }[] = [
-  { key: "playstore-hero", label: "Play Store Hero" },
+  { key: "playstore-hero", label: "Showcase Hero" },
   { key: "startup", label: "Modern Startup" },
   { key: "bold", label: "Bold Accent" },
   { key: "minimal", label: "Minimalist" },
@@ -419,51 +418,743 @@ export const MarketingBadgesPanel: React.FC = () => {
         )}
       </section>
 
-      {/* 5. 3D HOLOGRAPHIC SHIELD BADGE (Cyber Anti-Spam Style) */}
-      <section className="space-y-3">
+      {/* 5. APP ICON & LOGO */}
+      <section className="space-y-3 pt-2 border-t border-zinc-800/80">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield className="w-3.5 h-3.5 text-cyan-400" />
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
             <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
-              3D Holographic Shield
+              App Icon & Logo
             </h3>
           </div>
           <input
             type="checkbox"
-            checked={badges.showFloatingShield || false}
-            onChange={(e) => setBadges({ showFloatingShield: e.target.checked })}
+            checked={activeFrame.appIcon?.enabled === true}
+            onChange={(e) =>
+              useEditorStore
+                .getState()
+                .setAppIcon({ enabled: e.target.checked })
+            }
             className="rounded bg-zinc-800 border-zinc-700 text-indigo-600 focus:ring-0 cursor-pointer"
           />
         </div>
 
-        {badges.showFloatingShield && (
-          <div className="space-y-3 bg-zinc-900/40 p-3 rounded-xl border border-zinc-800/60 animate-in fade-in duration-150">
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
-              Shield Glow Color
-            </span>
-            <div className="flex gap-2">
+        {activeFrame.appIcon?.enabled && (
+          <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 space-y-3">
+            <label className="flex items-center gap-3 p-2 rounded-lg border border-dashed border-zinc-700 bg-zinc-900 hover:bg-zinc-800/60 cursor-pointer">
+              {activeFrame.appIcon?.url ? (
+                <img
+                  src={activeFrame.appIcon.url}
+                  alt="App Icon"
+                  className="w-10 h-10 object-cover rounded-xl border border-zinc-700"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                  <Sparkles size={18} />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <span className="text-xs text-white font-medium block truncate">
+                  {activeFrame.appIcon?.url ? "Change Icon" : "Upload App Icon"}
+                </span>
+                <span className="text-[10px] text-zinc-500">PNG / JPG logo</span>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                      useEditorStore.getState().setAppIcon({
+                        url: evt.target?.result as string,
+                      });
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                className="hidden"
+              />
+            </label>
+
+            <div className="grid grid-cols-2 gap-2">
               {[
-                { color: "#06b6d4", label: "Cyan" },
-                { color: "#d946ef", label: "Magenta" },
-                { color: "#8b5cf6", label: "Purple" },
-                { color: "#10b981", label: "Emerald" },
-              ].map((sw) => (
+                { id: "squircle", label: "Squircle" },
+                { id: "circle", label: "Circle" },
+              ].map((sh) => (
                 <button
-                  key={sw.color}
-                  onClick={() => setBadges({ shieldColor: sw.color })}
-                  className={`flex-1 h-7 rounded-lg border text-[10px] font-bold transition-all ${
-                    badges.shieldColor === sw.color
-                      ? "border-white text-white shadow-md ring-1 ring-white/20"
-                      : "border-transparent text-zinc-400 hover:text-white"
+                  key={sh.id}
+                  onClick={() =>
+                    useEditorStore
+                      .getState()
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      .setAppIcon({ shape: sh.id as any })
+                  }
+                  className={`py-1 px-2 rounded-lg text-xs font-medium border transition-all ${
+                    (activeFrame.appIcon?.shape || "squircle") === sh.id
+                      ? "bg-indigo-600/20 border-indigo-500/60 text-indigo-300"
+                      : "bg-zinc-900 border-zinc-800 text-zinc-400"
                   }`}
-                  style={{
-                    background: `linear-gradient(135deg, ${sw.color}33, ${sw.color}66)`,
-                    boxShadow: badges.shieldColor === sw.color ? `0 0 12px ${sw.color}66` : undefined,
-                  }}
                 >
-                  {sw.label}
+                  {sh.label}
                 </button>
               ))}
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px]">
+                <span className="text-zinc-400">Icon Size</span>
+                <span className="font-mono text-zinc-400">
+                  {activeFrame.appIcon?.size || 84}px
+                </span>
+              </div>
+              <input
+                type="range"
+                min={50}
+                max={140}
+                value={activeFrame.appIcon?.size || 84}
+                onChange={(e) =>
+                  useEditorStore
+                    .getState()
+                    .setAppIcon({ size: parseInt(e.target.value) })
+                }
+                className="w-full h-1.5 bg-zinc-800 rounded-full appearance-none accent-indigo-500 cursor-pointer"
+              />
+            </div>
+
+            {/* Position X / Y */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-zinc-400">Position X</span>
+                  <span className="font-mono text-zinc-500">
+                    {Math.round((activeFrame.appIcon?.x ?? 0.5) * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.02}
+                  max={0.98}
+                  step={0.01}
+                  value={activeFrame.appIcon?.x ?? 0.5}
+                  onChange={(e) =>
+                    useEditorStore
+                      .getState()
+                      .setAppIcon({ x: parseFloat(e.target.value) })
+                  }
+                  className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-indigo-500 cursor-pointer"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-zinc-400">Position Y</span>
+                  <span className="font-mono text-zinc-500">
+                    {Math.round((activeFrame.appIcon?.y ?? 0.05) * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.02}
+                  max={0.98}
+                  step={0.01}
+                  value={activeFrame.appIcon?.y ?? 0.05}
+                  onChange={(e) =>
+                    useEditorStore
+                      .getState()
+                      .setAppIcon({ y: parseFloat(e.target.value) })
+                  }
+                  className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-indigo-500 cursor-pointer"
+                />
+              </div>
+            </div>
+            <span className="text-[10px] text-zinc-500 block italic">
+              💡 Or drag the icon directly on the canvas preview!
+            </span>
+          </div>
+        )}
+      </section>
+
+      {/* 6. OFFICIAL STORE BADGES (Google Play & App Store) */}
+      <section className="space-y-3 pt-2 border-t border-zinc-800/80">
+        <div className="flex items-center gap-2">
+          <Download className="w-3.5 h-3.5 text-emerald-400" />
+          <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
+            Official Store Badges
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { id: "none", label: "None" },
+            { id: "google-play", label: "Google Play" },
+            { id: "app-store", label: "App Store" },
+            { id: "both", label: "Dual (Both)" },
+          ].map((b) => (
+            <button
+              key={b.id}
+              onClick={() =>
+                useEditorStore
+                  .getState()
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  .setStoreBadge(b.id as any)
+              }
+              className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition-all text-left flex items-center justify-between ${
+                (activeFrame.storeBadge || "none") === b.id
+                  ? "bg-emerald-500/15 border-emerald-500/60 text-emerald-300 shadow-sm"
+                  : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white"
+              }`}
+            >
+              <span>{b.label}</span>
+              {(activeFrame.storeBadge || "none") === b.id && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-sm" />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {activeFrame.storeBadge && activeFrame.storeBadge !== "none" && (
+          <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 space-y-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-zinc-400">Position X</span>
+                  <span className="font-mono text-zinc-500">
+                    {Math.round((activeFrame.storeBadgeX ?? 0.5) * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.05}
+                  max={0.95}
+                  step={0.01}
+                  value={activeFrame.storeBadgeX ?? 0.5}
+                  onChange={(e) =>
+                    useEditorStore
+                      .getState()
+                      .setStoreBadgePosition(
+                        parseFloat(e.target.value),
+                        activeFrame.storeBadgeY ?? 0.94
+                      )
+                  }
+                  className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-emerald-500 cursor-pointer"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px]">
+                  <span className="text-zinc-400">Position Y</span>
+                  <span className="font-mono text-zinc-500">
+                    {Math.round((activeFrame.storeBadgeY ?? 0.94) * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.05}
+                  max={0.98}
+                  step={0.01}
+                  value={activeFrame.storeBadgeY ?? 0.94}
+                  onChange={(e) =>
+                    useEditorStore
+                      .getState()
+                      .setStoreBadgePosition(
+                        activeFrame.storeBadgeX ?? 0.5,
+                        parseFloat(e.target.value)
+                      )
+                  }
+                  className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-emerald-500 cursor-pointer"
+                />
+              </div>
+            </div>
+            <span className="text-[10px] text-zinc-500 block italic">
+              💡 Or drag the store badges anywhere on the canvas!
+            </span>
+          </div>
+        )}
+      </section>
+
+      {/* 7. PROMO STICKER / FLOATING BADGE */}
+      <section className="space-y-3 pt-2 border-t border-zinc-800/80">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Star className="w-3.5 h-3.5 text-amber-400" />
+            <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
+              Promo Ribbon Sticker
+            </h3>
+          </div>
+          <input
+            type="checkbox"
+            checked={activeFrame.promoSticker?.enabled === true}
+            onChange={(e) =>
+              useEditorStore
+                .getState()
+                .setPromoSticker({ enabled: e.target.checked })
+            }
+            className="rounded bg-zinc-800 border-zinc-700 text-amber-500 focus:ring-0 cursor-pointer"
+          />
+        </div>
+
+        {activeFrame.promoSticker?.enabled && (
+          <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 space-y-3">
+            <div className="space-y-1">
+              <span className="text-[11px] text-zinc-400 font-medium block">
+                Sticker Text
+              </span>
+              <input
+                type="text"
+                value={activeFrame.promoSticker?.text || ""}
+                onChange={(e) =>
+                  useEditorStore
+                    .getState()
+                    .setPromoSticker({ text: e.target.value })
+                }
+                placeholder="e.g. #1 Top App, 50% OFF, Editor's Choice"
+                className="w-full h-8 px-2.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-white outline-none focus:border-amber-500 font-semibold"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[11px] text-zinc-400 font-medium block">
+                Theme Color
+              </span>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { id: "gold", label: "Gold", color: "#f59e0b" },
+                  { id: "indigo", label: "Indigo", color: "#6366f1" },
+                  { id: "emerald", label: "Emerald", color: "#10b981" },
+                  { id: "rose", label: "Rose", color: "#f43f5e" },
+                  { id: "cyber", label: "Cyber", color: "#06b6d4" },
+                ].map((th) => (
+                  <button
+                    key={th.id}
+                    onClick={() =>
+                      useEditorStore
+                        .getState()
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        .setPromoSticker({ theme: th.id as any })
+                    }
+                    className={`py-1 px-2 rounded-lg text-xs font-semibold border flex items-center gap-1.5 transition-all ${
+                      (activeFrame.promoSticker?.theme || "gold") === th.id
+                        ? "border-white text-white shadow-sm"
+                        : "border-zinc-800 text-zinc-400"
+                    }`}
+                    style={{ backgroundColor: `${th.color}20` }}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: th.color }}
+                    />
+                    <span>{th.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3D Tilt & Depth Transformer */}
+            <div className="space-y-2.5 bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-800">
+              <span className="text-[10px] font-bold text-amber-300 block">
+                3D Tilt & Perspective Depth
+              </span>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400">Pitch (Rotate X)</span>
+                    <span className="font-mono text-zinc-500">
+                      {activeFrame.promoSticker?.rotateX ?? 0}°
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-60}
+                    max={60}
+                    step={1}
+                    value={activeFrame.promoSticker?.rotateX ?? 0}
+                    onChange={(e) =>
+                      useEditorStore.getState().setPromoSticker({
+                        rotateX: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-amber-500 cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400">Yaw (Rotate Y)</span>
+                    <span className="font-mono text-zinc-500">
+                      {activeFrame.promoSticker?.rotateY ?? 0}°
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-60}
+                    max={60}
+                    step={1}
+                    value={activeFrame.promoSticker?.rotateY ?? 0}
+                    onChange={(e) =>
+                      useEditorStore.getState().setPromoSticker({
+                        rotateY: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-amber-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400 font-medium">3D Depth</span>
+                    <span className="font-mono text-zinc-400">
+                      {activeFrame.promoSticker?.depth ?? 8}px
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={30}
+                    step={1}
+                    value={activeFrame.promoSticker?.depth ?? 8}
+                    onChange={(e) =>
+                      useEditorStore.getState().setPromoSticker({
+                        depth: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-amber-500 cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400">Rotation</span>
+                    <span className="font-mono text-zinc-500">
+                      {activeFrame.promoSticker?.rotation ?? 0}°
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-180}
+                    max={180}
+                    step={1}
+                    value={activeFrame.promoSticker?.rotation ?? 0}
+                    onChange={(e) =>
+                      useEditorStore.getState().setPromoSticker({
+                        rotation: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-amber-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Position X / Y */}
+            <div className="space-y-1">
+              <span className="text-[11px] text-zinc-400 font-medium block">
+                Position Adjustment
+              </span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400">Position X</span>
+                    <span className="font-mono text-zinc-500">
+                      {Math.round((activeFrame.promoSticker?.x ?? 0.5) * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.05}
+                    max={0.95}
+                    step={0.01}
+                    value={activeFrame.promoSticker?.x ?? 0.5}
+                    onChange={(e) =>
+                      useEditorStore.getState().setPromoSticker({
+                        x: parseFloat(e.target.value),
+                        position: "custom",
+                      })
+                    }
+                    className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-amber-500 cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400">Position Y</span>
+                    <span className="font-mono text-zinc-500">
+                      {Math.round((activeFrame.promoSticker?.y ?? 0.42) * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.05}
+                    max={0.95}
+                    step={0.01}
+                    value={activeFrame.promoSticker?.y ?? 0.42}
+                    onChange={(e) =>
+                      useEditorStore.getState().setPromoSticker({
+                        y: parseFloat(e.target.value),
+                        position: "custom",
+                      })
+                    }
+                    className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-amber-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+              <span className="text-[10px] text-zinc-500 block italic pt-1">
+                💡 Or drag the ribbon sticker directly on the canvas!
+              </span>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* 8. TESTIMONIAL REVIEW CARD */}
+      <section className="space-y-3 pt-2 border-t border-zinc-800/80">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Star className="w-3.5 h-3.5 text-pink-400" />
+            <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
+              Testimonial Review Card
+            </h3>
+          </div>
+          <input
+            type="checkbox"
+            checked={activeFrame.testimonial?.enabled === true}
+            onChange={(e) =>
+              useEditorStore
+                .getState()
+                .setTestimonial({ enabled: e.target.checked })
+            }
+            className="rounded bg-zinc-800 border-zinc-700 text-pink-500 focus:ring-0 cursor-pointer"
+          />
+        </div>
+
+        {activeFrame.testimonial?.enabled && (
+          <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 space-y-3">
+            <div className="space-y-1">
+              <span className="text-[11px] text-zinc-400 font-medium block">
+                User Name & Role
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={activeFrame.testimonial?.name || ""}
+                  onChange={(e) =>
+                    useEditorStore
+                      .getState()
+                      .setTestimonial({ name: e.target.value })
+                  }
+                  placeholder="e.g. Alex Rivera"
+                  className="w-full h-8 px-2.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-white outline-none focus:border-pink-500"
+                />
+                <input
+                  type="text"
+                  value={activeFrame.testimonial?.handle || ""}
+                  onChange={(e) =>
+                    useEditorStore
+                      .getState()
+                      .setTestimonial({ handle: e.target.value })
+                  }
+                  placeholder="e.g. Verified Buyer"
+                  className="w-full h-8 px-2.5 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-zinc-400 outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[11px] text-zinc-400 font-medium block">
+                Review Quote
+              </span>
+              <textarea
+                value={activeFrame.testimonial?.review || ""}
+                onChange={(e) =>
+                  useEditorStore
+                    .getState()
+                    .setTestimonial({ review: e.target.value })
+                }
+                placeholder="e.g. Absolutely gorgeous app, boosted our conversion by 200%!"
+                rows={2}
+                className="w-full p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-white outline-none focus:border-pink-500 resize-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[11px] text-zinc-400 font-medium block">
+                Star Rating
+              </span>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() =>
+                      useEditorStore.getState().setTestimonial({ rating: star })
+                    }
+                    className={`p-1.5 rounded-lg text-sm transition-all ${
+                      (activeFrame.testimonial?.rating || 5) >= star
+                        ? "text-amber-400 bg-amber-500/10"
+                        : "text-zinc-600 bg-zinc-900"
+                    }`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3D Tilt & Depth Transformer */}
+            <div className="space-y-2.5 bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-800">
+              <span className="text-[10px] font-bold text-pink-300 block">
+                3D Tilt & Perspective Depth
+              </span>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400">Pitch (Rotate X)</span>
+                    <span className="font-mono text-zinc-500">
+                      {activeFrame.testimonial?.rotateX ?? 0}°
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-60}
+                    max={60}
+                    step={1}
+                    value={activeFrame.testimonial?.rotateX ?? 0}
+                    onChange={(e) =>
+                      useEditorStore.getState().setTestimonial({
+                        rotateX: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-pink-500 cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400">Yaw (Rotate Y)</span>
+                    <span className="font-mono text-zinc-500">
+                      {activeFrame.testimonial?.rotateY ?? 0}°
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-60}
+                    max={60}
+                    step={1}
+                    value={activeFrame.testimonial?.rotateY ?? 0}
+                    onChange={(e) =>
+                      useEditorStore.getState().setTestimonial({
+                        rotateY: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-pink-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400 font-medium">3D Depth</span>
+                    <span className="font-mono text-zinc-400">
+                      {activeFrame.testimonial?.depth ?? 10}px
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={30}
+                    step={1}
+                    value={activeFrame.testimonial?.depth ?? 10}
+                    onChange={(e) =>
+                      useEditorStore.getState().setTestimonial({
+                        depth: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-pink-500 cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400">Rotation</span>
+                    <span className="font-mono text-zinc-500">
+                      {activeFrame.testimonial?.rotation ?? 0}°
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={-180}
+                    max={180}
+                    step={1}
+                    value={activeFrame.testimonial?.rotation ?? 0}
+                    onChange={(e) =>
+                      useEditorStore.getState().setTestimonial({
+                        rotation: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-pink-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Position X / Y */}
+            <div className="space-y-1 pt-1">
+              <span className="text-[11px] text-zinc-400 font-medium block">
+                Position Adjustment
+              </span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400">Position X</span>
+                    <span className="font-mono text-zinc-500">
+                      {Math.round((activeFrame.testimonial?.x ?? 0.5) * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.05}
+                    max={0.95}
+                    step={0.01}
+                    value={activeFrame.testimonial?.x ?? 0.5}
+                    onChange={(e) =>
+                      useEditorStore.getState().setTestimonial({
+                        x: parseFloat(e.target.value),
+                      })
+                    }
+                    className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-pink-500 cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-zinc-400">Position Y</span>
+                    <span className="font-mono text-zinc-500">
+                      {Math.round((activeFrame.testimonial?.y ?? 0.88) * 100)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.05}
+                    max={0.98}
+                    step={0.01}
+                    value={activeFrame.testimonial?.y ?? 0.88}
+                    onChange={(e) =>
+                      useEditorStore.getState().setTestimonial({
+                        y: parseFloat(e.target.value),
+                      })
+                    }
+                    className="w-full h-1 bg-zinc-800 rounded-full appearance-none accent-pink-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+              <span className="text-[10px] text-zinc-500 block italic pt-1">
+                💡 Or drag the review card directly anywhere on the canvas!
+              </span>
             </div>
           </div>
         )}

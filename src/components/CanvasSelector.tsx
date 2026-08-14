@@ -104,16 +104,16 @@ export const CanvasSelector: React.FC = () => {
       {/* Add Frame Button */}
       <button
         onClick={() => addFrame()}
-        disabled={frames.length >= 8}
-        className="h-8 px-2.5 rounded-lg border border-dashed border-zinc-700 text-zinc-400 hover:text-white hover:border-indigo-500 hover:bg-indigo-500/10 transition-all flex items-center gap-1 text-xs font-semibold disabled:opacity-30 disabled:cursor-not-allowed"
-        title="Add Screenshot Frame (Max 8 for Play Store)"
+        disabled={frames.length >= 4}
+        className="h-8 px-2.5 rounded-lg border border-dashed border-zinc-700 text-zinc-400 hover:text-white hover:border-indigo-500 hover:bg-indigo-500/10 transition-all flex items-center gap-1 text-xs font-semibold disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+        title="Add Screenshot Frame (Max 4)"
       >
         <Plus size={13} />
         <span className="hidden sm:inline">Add Slide</span>
       </button>
 
       <span className="text-[10px] text-zinc-500 font-mono pl-1">
-        {frames.length}/8
+        {frames.length}/4
       </span>
     </div>
   );

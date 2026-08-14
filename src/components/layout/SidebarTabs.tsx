@@ -5,6 +5,8 @@ import {
   Image as ImageIcon,
   Type,
   LayoutGrid,
+  Shapes,
+  Download,
 } from "lucide-react";
 import { useEditorStore } from "../../store/useEditorStore";
 import type { EditorTab } from "../../store/useEditorStore";
@@ -17,11 +19,13 @@ interface TabItem {
 }
 
 const TABS: TabItem[] = [
+  { id: "canvas", label: "Canvas", sublabel: "Size & Ratio", icon: LayoutGrid },
   { id: "templates", label: "Templates", sublabel: "1-Click Styles", icon: Sparkles },
   { id: "devices", label: "Device", sublabel: "3D Mockups", icon: Smartphone },
   { id: "backgrounds", label: "Vectors", sublabel: "Waves & Mesh", icon: ImageIcon },
   { id: "marketing", label: "Badges", sublabel: "Rating & Text", icon: Type },
-  { id: "canvas", label: "Export", sublabel: "Sizes & ZIP", icon: LayoutGrid },
+  { id: "decorations", label: "3D Icons", sublabel: "Floating Assets", icon: Shapes },
+  { id: "export", label: "Export", sublabel: "Sizes & ZIP", icon: Download },
 ];
 
 export const SidebarTabs: React.FC = () => {

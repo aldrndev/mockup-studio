@@ -7,6 +7,14 @@ import type {
   VectorOverlayConfig,
   PlayStoreBadgesConfig,
   TextOverlay,
+  SecondaryDeviceConfig,
+  ScreenGlareConfig,
+  AppIconConfig,
+  StoreBadgeType,
+  PromoStickerConfig,
+  TestimonialConfig,
+  FloatingElementConfig,
+  FloatingBarItem,
 } from "../types/device";
 import { PLAYSTORE_TEMPLATES } from "../utils/playstoreTemplates";
 
@@ -14,7 +22,14 @@ import { PLAYSTORE_TEMPLATES } from "../utils/playstoreTemplates";
 export type BackgroundBase = "solid" | "gradient" | "image";
 export type BackgroundStyle = "none" | "radial" | "spotlight" | "beam";
 export type OverlayPattern = "none" | "noise" | "dots" | "grid";
-export type EditorTab = "templates" | "devices" | "backgrounds" | "marketing" | "canvas";
+export type EditorTab =
+  | "canvas"
+  | "templates"
+  | "devices"
+  | "backgrounds"
+  | "marketing"
+  | "decorations"
+  | "export";
 
 export interface Background {
   type: BackgroundBase; // Base layer (Solid/Gradient/Image)
@@ -68,6 +83,18 @@ export interface Frame {
   showShadow?: boolean;
   showReflection?: boolean;
   engine?: "three-3d" | "vector";
+
+  // Studio Pro Features
+  secondaryDevice?: SecondaryDeviceConfig | null;
+  screenGlare?: ScreenGlareConfig;
+  appIcon?: AppIconConfig;
+  storeBadge?: StoreBadgeType;
+  storeBadgeX?: number; // 0 to 1 relative (default: 0.5)
+  storeBadgeY?: number; // 0 to 1 relative (default: 0.94)
+  promoSticker?: PromoStickerConfig;
+  testimonial?: TestimonialConfig;
+  floatingElements?: FloatingElementConfig[];
+  floatingBars?: FloatingBarItem[];
 }
 
 interface EditorState {
@@ -90,6 +117,7 @@ interface EditorState {
   // Custom Canvas Size (null = auto from device)
   canvasWidth: number | null;
   canvasHeight: number | null;
+  canvasPresetId: string | null;
 
   // Frame Sequence State
   frames: Frame[];
@@ -117,7 +145,15 @@ interface EditorState {
   setCutPreset: (preset: CutPreset) => void;
   setExportPreset: (preset: ExportPresetKey) => void;
   setEditorMode: (mode: EditorMode) => void;
-  setCanvasSize: (width: number | null, height: number | null) => void;
+  setCanvasSize: (
+    width: number | null,
+    height: number | null,
+    options?: {
+      deviceType?: DeviceType;
+      autoScale?: boolean;
+      presetId?: string;
+    }
+  ) => void;
 
   // Actions - Templates & 3D Presets
   applyTemplate: (templateId: string) => void;
@@ -153,6 +189,25 @@ interface EditorState {
     engine?: "three-3d" | "vector";
   }) => void;
   toggleFrameDevice: (id: string) => void;
+
+  // Studio Pro Actions
+  setSecondaryDevice: (config: Partial<SecondaryDeviceConfig> | null) => void;
+  setScreenGlare: (config: Partial<ScreenGlareConfig>) => void;
+  setAppIcon: (config: Partial<AppIconConfig>) => void;
+  setStoreBadge: (badge: StoreBadgeType) => void;
+  setStoreBadgePosition: (x: number, y: number) => void;
+  setPromoSticker: (config: Partial<PromoStickerConfig>) => void;
+  setTestimonial: (config: Partial<TestimonialConfig>) => void;
+  addFloatingElement: (element: Omit<FloatingElementConfig, "id">) => void;
+  removeFloatingElement: (id: string) => void;
+  updateFloatingElement: (id: string, updates: Partial<FloatingElementConfig>) => void;
+  addFloatingBar: (bar: Omit<FloatingBarItem, "id">) => void;
+  removeFloatingBar: (id: string) => void;
+  updateFloatingBar: (id: string, updates: Partial<FloatingBarItem>) => void;
+  setFloatingBars: (bars: FloatingBarItem[]) => void;
+  loadFloatingBarPreset: (presetName: "ai-tasks" | "fintech" | "fitness" | "social") => void;
+  exportProjectJson: () => string;
+  importProjectJson: (jsonString: string) => boolean;
 
   resetEditor: () => void;
 }
@@ -246,6 +301,7 @@ const createInitialFrame = (id: string = initialFrameId): Frame => ({
   rotation: 0,
   rotateX: 0,
   rotateY: 0,
+  depth: 52,
   skewX: 0,
   skewY: 0,
   flipX: false,
@@ -255,6 +311,16 @@ const createInitialFrame = (id: string = initialFrameId): Frame => ({
   showDevice: true,
   showShadow: true,
   showReflection: false,
+  secondaryDevice: null,
+  screenGlare: { enabled: false, opacity: 0.35, style: "diagonal-curved" },
+  appIcon: { enabled: false, url: null, size: 84, shape: "squircle", glow: false, x: 0.5, y: 0.04 },
+  storeBadge: "none",
+  storeBadgeX: 0.5,
+  storeBadgeY: 0.94,
+  promoSticker: { enabled: false, text: "#1 Top App", icon: "trophy", theme: "gold", position: "above-device", x: 0.5, y: 0.42 },
+  testimonial: { enabled: false, name: "Alex R.", handle: "Verified User", review: "Incredible app experience!", rating: 5, avatarEmoji: "⭐", x: 0.5, y: 0.88 },
+  floatingElements: [],
+  floatingBars: [],
 });
 
 const getSnapshot = (state: EditorState): CanvasSnapshot => ({
@@ -272,7 +338,7 @@ const getSnapshot = (state: EditorState): CanvasSnapshot => ({
 });
 
 export const useEditorStore = create<EditorState>((set, get) => ({
-  activeTab: "devices",
+  activeTab: "canvas",
   canvasZoom: 1,
 
   // History Stacks
@@ -291,6 +357,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   editorMode: "standard",
   canvasWidth: 1080,
   canvasHeight: 2400,
+  canvasPresetId: "gp-phone-9-20",
 
   frames: [createInitialFrame(initialFrameId)],
   activeFrameId: initialFrameId,
@@ -331,7 +398,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       return {
         past: [...state.past, currentSnapshot].slice(-30),
         future: [],
-        activeTab: "devices",
+        activeTab: "canvas",
         deviceType: "iphone",
         deviceStyle: "realistic",
         deviceColor: "titanium-dark",
@@ -340,6 +407,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         badges: { ...emptyBadges },
         canvasWidth: 1080,
         canvasHeight: 2400,
+        canvasPresetId: "gp-phone-9-20",
         frames: [createInitialFrame(newId)],
         activeFrameId: newId,
       };
@@ -553,14 +621,54 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setCutPreset: (preset) => set({ cutPreset: preset }),
   setExportPreset: (preset) => set({ exportPreset: preset }),
   setEditorMode: (mode) => set({ editorMode: mode }),
-  setCanvasSize: (width, height) => {
-    const snapshot = getSnapshot(get());
-    set({
-      past: [...get().past, snapshot].slice(-30),
+  setCanvasSize: (width, height, options) => {
+    const currentState = get();
+    const snapshot = getSnapshot(currentState);
+
+    const w = width ?? 1080;
+    const h = height ?? 2400;
+
+    // Determine target device type (explicitly passed or inferred)
+    let targetDeviceType: DeviceType = options?.deviceType || currentState.deviceType;
+    if (!options?.deviceType) {
+      if (w === 1920 && h === 1080) {
+        targetDeviceType = "desktop";
+      } else if ((w === 1200 && h === 1920) || (w === 1600 && h === 2560) || (w === 2048 && h === 2732) || (w === 1668 && h === 2388)) {
+        targetDeviceType = "tablet";
+      }
+    }
+
+    // Calculate optimal proportional scale to perfectly fit new canvas
+    let optimalScale = 1.65;
+    if (targetDeviceType === "desktop") {
+      optimalScale = Math.round(Math.min((w * 0.82) / 800, (h * 0.72) / 540) * 100) / 100;
+    } else if (targetDeviceType === "tablet") {
+      optimalScale = Math.round(Math.min((w * 0.8) / 560, (h * 0.76) / 752) * 100) / 100;
+    } else {
+      // Phone (iPhone / Android)
+      const isLandscape = w > h;
+      if (isLandscape) {
+        optimalScale = Math.round(((h * 0.76) / 932) * 100) / 100;
+      } else if (w === h) {
+        optimalScale = Math.round(((h * 0.68) / 932) * 100) / 100;
+      } else {
+        optimalScale = Math.round(((h * 0.72) / 932) * 100) / 100;
+      }
+    }
+
+    set((state) => ({
+      past: [...state.past, snapshot].slice(-30),
       future: [],
       canvasWidth: width,
       canvasHeight: height,
-    });
+      canvasPresetId: options?.presetId ?? null,
+      deviceType: targetDeviceType,
+      frames: state.frames.map((frame) => ({
+        ...frame,
+        deviceType: targetDeviceType,
+        scale: optimalScale,
+      })),
+    }));
   },
 
   // 1-Click Template Applier with History
@@ -678,7 +786,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // Frame Management with History
   addFrame: (overrideDeviceType) =>
     set((state) => {
-      if (state.frames.length >= 8) return state;
+      if (state.frames.length >= 4) return state;
       const snapshot = getSnapshot(state);
       const newId = crypto.randomUUID();
       const currentActive = state.frames.find((f) => f.id === state.activeFrameId) || state.frames[0];
@@ -817,6 +925,593 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         ),
       };
     }),
+
+  // Studio Pro Actions
+  setSecondaryDevice: (config) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? {
+                ...c,
+                secondaryDevice: config
+                  ? {
+                      enabled: true,
+                      deviceType: c.deviceType,
+                      deviceColor: c.deviceColor,
+                      screenshot: null,
+                      layout: "behind-left",
+                      scale: 0.88,
+                      offsetX: -220,
+                      offsetY: 60,
+                      rotateY: -15,
+                      rotateX: 8,
+                      rotation: -6,
+                      depth: 48,
+                      ...c.secondaryDevice,
+                      ...config,
+                    }
+                  : null,
+              }
+            : c
+        ),
+      };
+    }),
+
+  setScreenGlare: (config) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? {
+                ...c,
+                screenGlare: {
+                  enabled: true,
+                  opacity: 0.35,
+                  style: "diagonal-curved",
+                  ...c.screenGlare,
+                  ...config,
+                },
+              }
+            : c
+        ),
+      };
+    }),
+
+  setAppIcon: (config) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? {
+                ...c,
+                appIcon: {
+                  enabled: true,
+                  url: null,
+                  size: 84,
+                  shape: "squircle",
+                  glow: false,
+                  ...c.appIcon,
+                  ...config,
+                },
+              }
+            : c
+        ),
+      };
+    }),
+
+  setStoreBadge: (badge) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId ? { ...c, storeBadge: badge } : c
+        ),
+      };
+    }),
+
+  setStoreBadgePosition: (x, y) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? { ...c, storeBadgeX: x, storeBadgeY: y }
+            : c
+        ),
+      };
+    }),
+
+  setPromoSticker: (config) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? {
+                ...c,
+                promoSticker: {
+                  enabled: true,
+                  text: "#1 Top App",
+                  icon: "trophy",
+                  theme: "gold",
+                  position: "above-device",
+                  ...c.promoSticker,
+                  ...config,
+                },
+              }
+            : c
+        ),
+      };
+    }),
+
+  setTestimonial: (config) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? {
+                ...c,
+                testimonial: {
+                  enabled: true,
+                  name: "Alex R.",
+                  handle: "Verified User",
+                  review: "Incredible app experience!",
+                  rating: 5,
+                  avatarEmoji: "⭐",
+                  ...c.testimonial,
+                  ...config,
+                },
+              }
+            : c
+        ),
+      };
+    }),
+
+  addFloatingElement: (element) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      const newEl: FloatingElementConfig = {
+        ...element,
+        id: crypto.randomUUID(),
+      };
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? {
+                ...c,
+                floatingElements: [...(c.floatingElements || []), newEl],
+              }
+            : c
+        ),
+      };
+    }),
+
+  removeFloatingElement: (id) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? {
+                ...c,
+                floatingElements: (c.floatingElements || []).filter((el) => el.id !== id),
+              }
+            : c
+        ),
+      };
+    }),
+
+  updateFloatingElement: (id, updates) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? {
+                ...c,
+                floatingElements: (c.floatingElements || []).map((el) =>
+                  el.id === id ? { ...el, ...updates } : el
+                ),
+              }
+            : c
+        ),
+      };
+    }),
+
+  addFloatingBar: (bar) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      const newBar: FloatingBarItem = {
+        ...bar,
+        id: crypto.randomUUID(),
+        depth: bar.depth ?? 10,
+        scale: bar.scale ?? 1,
+        rotateX: bar.rotateX ?? 0,
+        rotateY: bar.rotateY ?? 0,
+        rotation: bar.rotation ?? 0,
+        bgColor: bar.bgColor ?? "#ffffff",
+        textColor: bar.textColor ?? "#0f172a",
+        syncWithPhone3D: bar.syncWithPhone3D ?? false,
+      };
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? {
+                ...c,
+                floatingBars: [...(c.floatingBars || []), newBar],
+              }
+            : c
+        ),
+      };
+    }),
+
+  removeFloatingBar: (id) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? {
+                ...c,
+                floatingBars: (c.floatingBars || []).filter((b) => b.id !== id),
+              }
+            : c
+        ),
+      };
+    }),
+
+  updateFloatingBar: (id, updates) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? {
+                ...c,
+                floatingBars: (c.floatingBars || []).map((b) =>
+                  b.id === id ? { ...b, ...updates } : b
+                ),
+              }
+            : c
+        ),
+      };
+    }),
+
+  setFloatingBars: (bars) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? {
+                ...c,
+                floatingBars: bars,
+              }
+            : c
+        ),
+      };
+    }),
+
+  loadFloatingBarPreset: (presetName) =>
+    set((state) => {
+      const snapshot = getSnapshot(state);
+      let presetBars: FloatingBarItem[] = [];
+
+      if (presetName === "ai-tasks") {
+        presetBars = [
+          {
+            id: crypto.randomUUID(),
+            text: "Rencanakan untukmu",
+            icon: "calendar",
+            x: 0.28,
+            y: 0.72,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+          {
+            id: crypto.randomUUID(),
+            text: "Buat untukmu",
+            icon: "wand",
+            x: 0.72,
+            y: 0.72,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+          {
+            id: crypto.randomUUID(),
+            text: "Rangkum untukmu",
+            icon: "file",
+            x: 0.32,
+            y: 0.81,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+          {
+            id: crypto.randomUUID(),
+            text: "Pantau untukmu",
+            icon: "clock",
+            x: 0.74,
+            y: 0.81,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+          {
+            id: crypto.randomUUID(),
+            text: "Lakukan untukmu",
+            icon: "check",
+            x: 0.52,
+            y: 0.90,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+        ];
+      } else if (presetName === "fintech") {
+        presetBars = [
+          {
+            id: crypto.randomUUID(),
+            text: "Transfer Instan 0%",
+            icon: "zap",
+            x: 0.3,
+            y: 0.74,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+          {
+            id: crypto.randomUUID(),
+            text: "Investasi Cerdas",
+            icon: "chart",
+            x: 0.72,
+            y: 0.74,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+          {
+            id: crypto.randomUUID(),
+            text: "Keamanan Enkripsi 256-bit",
+            icon: "shield",
+            x: 0.5,
+            y: 0.86,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+        ];
+      } else if (presetName === "fitness") {
+        presetBars = [
+          {
+            id: crypto.randomUUID(),
+            text: "Bakar 500+ Kalori",
+            icon: "flame",
+            x: 0.3,
+            y: 0.74,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+          {
+            id: crypto.randomUUID(),
+            text: "Lacak GPS & Heart Rate",
+            icon: "heart",
+            x: 0.72,
+            y: 0.74,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+          {
+            id: crypto.randomUUID(),
+            text: "Target Workout Selesai",
+            icon: "check",
+            x: 0.5,
+            y: 0.86,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+        ];
+      } else if (presetName === "social") {
+        presetBars = [
+          {
+            id: crypto.randomUUID(),
+            text: "Chat AI Super Cepat",
+            icon: "chat",
+            x: 0.3,
+            y: 0.74,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+          {
+            id: crypto.randomUUID(),
+            text: "Filter Efek Trending",
+            icon: "sparkles",
+            x: 0.72,
+            y: 0.74,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+          {
+            id: crypto.randomUUID(),
+            text: "Komunitas 1M+ Kreator",
+            icon: "user",
+            x: 0.5,
+            y: 0.86,
+            depth: 10,
+            scale: 1,
+            rotateX: 0,
+            rotateY: 0,
+            rotation: 0,
+            bgColor: "#ffffff",
+            textColor: "#0f172a",
+            syncWithPhone3D: false,
+          },
+        ];
+      }
+
+      return {
+        past: [...state.past, snapshot].slice(-30),
+        future: [],
+        frames: state.frames.map((c) =>
+          c.id === state.activeFrameId
+            ? {
+                ...c,
+                floatingBars: presetBars,
+              }
+            : c
+        ),
+      };
+    }),
+
+  exportProjectJson: () => {
+    const state = get();
+    const projectData = {
+      version: "2.0",
+      timestamp: new Date().toISOString(),
+      canvasWidth: state.canvasWidth,
+      canvasHeight: state.canvasHeight,
+      deviceType: state.deviceType,
+      deviceStyle: state.deviceStyle,
+      deviceColor: state.deviceColor,
+      background: state.background,
+      vectorOverlay: state.vectorOverlay,
+      badges: state.badges,
+      textPreset: state.textPreset,
+      frames: state.frames,
+    };
+    return JSON.stringify(projectData, null, 2);
+  },
+
+  importProjectJson: (jsonString: string) => {
+    try {
+      const data = JSON.parse(jsonString);
+      if (!data.frames || !Array.isArray(data.frames)) return false;
+      const snapshot = getSnapshot(get());
+      set({
+        past: [...get().past, snapshot].slice(-30),
+        future: [],
+        canvasWidth: data.canvasWidth || 1080,
+        canvasHeight: data.canvasHeight || 2400,
+        deviceType: data.deviceType || "iphone",
+        deviceStyle: data.deviceStyle || "realistic",
+        deviceColor: data.deviceColor || "titanium-dark",
+        background: data.background || emptyBackground,
+        vectorOverlay: data.vectorOverlay || emptyVectorOverlay,
+        badges: data.badges || emptyBadges,
+        textPreset: data.textPreset || "playstore-hero",
+        frames: data.frames,
+        activeFrameId: data.frames[0]?.id || crypto.randomUUID(),
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  },
 
   resetEditor: () => get().resetAll(),
 }));

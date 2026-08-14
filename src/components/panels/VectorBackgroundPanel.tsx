@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   PaintBucket,
   Palette,
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useEditorStore, GRADIENT_PRESETS } from "../../store/useEditorStore";
 import { VECTOR_PRESETS } from "../../utils/vectorBackgrounds";
+import type { VectorCategory } from "../../utils/vectorBackgrounds";
 import type { VectorBackgroundType, BackgroundType } from "../../types/device";
 import type { BackgroundStyle } from "../../store/useEditorStore";
 
@@ -23,6 +24,12 @@ export const VectorBackgroundPanel: React.FC = () => {
     vectorOverlay,
     setVectorOverlay,
   } = useEditorStore();
+
+  const [activeCategory, setActiveCategory] = useState<VectorCategory>("all");
+
+  const filteredPresets = VECTOR_PRESETS.filter(
+    (p) => activeCategory === "all" || p.category === activeCategory
+  );
 
   return (
     <div className="p-4 space-y-6">
@@ -180,7 +187,7 @@ export const VectorBackgroundPanel: React.FC = () => {
         )}
       </section>
 
-      {/* 2. VECTOR BACKGROUND OVERLAYS (CORE NEW FEATURE) */}
+      {/* 2. VECTOR BACKGROUND OVERLAYS (EXPANDED TO 20 STYLES) */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -190,13 +197,36 @@ export const VectorBackgroundPanel: React.FC = () => {
             </h3>
           </div>
           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-            PLAY STORE
+            {VECTOR_PRESETS.length} STYLES
           </span>
         </div>
 
+        {/* Category Filter Tabs */}
+        <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
+          {[
+            { id: "all", label: "All" },
+            { id: "cyber", label: "⚡ Cyber & Neon" },
+            { id: "fluid", label: "🌊 Fluid & Glow" },
+            { id: "geometric", label: "📐 Geometric" },
+            { id: "minimal", label: "✨ Minimal" },
+          ].map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id as VectorCategory)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold shrink-0 transition-all ${
+                activeCategory === cat.id
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "bg-zinc-900/80 text-zinc-400 hover:text-white border border-zinc-800"
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
         {/* Vector Preset Grid */}
-        <div className="grid grid-cols-2 gap-2">
-          {VECTOR_PRESETS.map((vp) => (
+        <div className="grid grid-cols-2 gap-2 max-h-[360px] overflow-y-auto pr-1 scrollbar-thin">
+          {filteredPresets.map((vp) => (
             <button
               key={vp.type}
               onClick={() =>
@@ -216,7 +246,7 @@ export const VectorBackgroundPanel: React.FC = () => {
               <div className="text-[11px] font-bold mb-0.5 truncate">
                 {vp.label}
               </div>
-              <div className="text-[9px] text-zinc-500 truncate">
+              <div className="text-[9px] text-zinc-500 line-clamp-2">
                 {vp.desc}
               </div>
             </button>

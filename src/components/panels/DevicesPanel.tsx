@@ -412,6 +412,261 @@ export const DevicesPanel: React.FC = () => {
           </div>
         )}
       </section>
+
+      {/* 5. SCREEN GLASS GLARE & SPECULAR SHEEN */}
+      <section className="space-y-3 pt-2 border-t border-zinc-800/80">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
+              Screen Glass Glare
+            </h3>
+          </div>
+          <input
+            type="checkbox"
+            checked={activeFrame.screenGlare?.enabled === true}
+            onChange={(e) =>
+              useEditorStore
+                .getState()
+                .setScreenGlare({ enabled: e.target.checked })
+            }
+            className="rounded bg-zinc-800 border-zinc-700 text-cyan-500 focus:ring-0 cursor-pointer"
+          />
+        </div>
+
+        {activeFrame.screenGlare?.enabled && (
+          <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 space-y-3">
+            <SliderItem
+              label="Glass Glare Opacity"
+              value={activeFrame.screenGlare?.opacity ?? 0.35}
+              min={0.05}
+              max={0.9}
+              step={0.05}
+              unit=""
+              onChange={(val) =>
+                useEditorStore.getState().setScreenGlare({ opacity: val })
+              }
+            />
+
+            <div className="space-y-1.5">
+              <span className="text-[11px] text-zinc-400 font-medium block">
+                Reflection Style
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: "diagonal-curved", label: "Curved Glass" },
+                  { id: "linear-streak", label: "Studio Streak" },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() =>
+                      useEditorStore
+                        .getState()
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        .setScreenGlare({ style: s.id as any })
+                    }
+                    className={`py-1.5 px-2 rounded-lg text-xs font-medium border transition-all ${
+                      (activeFrame.screenGlare?.style || "diagonal-curved") === s.id
+                        ? "bg-cyan-500/15 border-cyan-500/50 text-cyan-300"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* 6. DUAL DEVICE COMPOSITION (SECONDARY PHONE) */}
+      <section className="space-y-3 pt-2 border-t border-zinc-800/80">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Layers className="w-3.5 h-3.5 text-indigo-400" />
+            <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
+              Dual Phone (2nd Device)
+            </h3>
+          </div>
+          <input
+            type="checkbox"
+            checked={activeFrame.secondaryDevice?.enabled === true}
+            onChange={(e) =>
+              useEditorStore
+                .getState()
+                .setSecondaryDevice(
+                  e.target.checked
+                    ? { enabled: true, deviceType: activeFrame.deviceType }
+                    : null
+                )
+            }
+            className="rounded bg-zinc-800 border-zinc-700 text-indigo-500 focus:ring-0 cursor-pointer"
+          />
+        </div>
+
+        {activeFrame.secondaryDevice?.enabled && (
+          <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 space-y-4">
+            {/* Quick Layout Presets */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] text-zinc-400 font-medium block">
+                Dual Phone Layout
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  {
+                    id: "behind-left",
+                    label: "Behind Left",
+                    cfg: { offsetX: -220, offsetY: 60, scale: 0.88, rotateY: -15, rotateX: 8, rotation: -6 },
+                  },
+                  {
+                    id: "behind-right",
+                    label: "Behind Right",
+                    cfg: { offsetX: 220, offsetY: 60, scale: 0.88, rotateY: 15, rotateX: 8, rotation: 6 },
+                  },
+                  {
+                    id: "side-by-side",
+                    label: "Side by Side",
+                    cfg: { offsetX: -250, offsetY: 0, scale: 0.92, rotateY: 0, rotateX: 0, rotation: 0 },
+                  },
+                  {
+                    id: "overlap-tilt",
+                    label: "Overlap Hero",
+                    cfg: { offsetX: -180, offsetY: 80, scale: 0.84, rotateY: -25, rotateX: 12, rotation: -12 },
+                  },
+                ].map((preset) => (
+                  <button
+                    key={preset.id}
+                    onClick={() =>
+                      useEditorStore
+                        .getState()
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        .setSecondaryDevice({ layout: preset.id as any, ...preset.cfg })
+                    }
+                    className={`py-1.5 px-2 rounded-lg text-xs font-medium border transition-all ${
+                      (activeFrame.secondaryDevice?.layout || "behind-left") === preset.id
+                        ? "bg-indigo-500/20 border-indigo-500/60 text-indigo-300"
+                        : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white"
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 2nd Phone Model */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] text-zinc-400 font-medium block">
+                2nd Phone Model
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: "iphone", label: "iPhone 16 Pro" },
+                  { id: "android", label: "Galaxy S25 Ultra" },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() =>
+                      useEditorStore
+                        .getState()
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        .setSecondaryDevice({ deviceType: m.id as any })
+                    }
+                    className={`py-1.5 px-2 rounded-lg text-xs font-medium border transition-all ${
+                      activeFrame.secondaryDevice?.deviceType === m.id
+                        ? "bg-zinc-800 border-zinc-600 text-white"
+                        : "bg-zinc-900/80 border-zinc-800/80 text-zinc-400"
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 2nd Phone Screenshot Upload */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] text-zinc-400 font-medium block">
+                2nd Phone Screenshot
+              </span>
+              <label className="flex items-center gap-3 p-2 rounded-lg border border-dashed border-zinc-700 bg-zinc-900 hover:bg-zinc-800/60 cursor-pointer">
+                {activeFrame.secondaryDevice?.screenshot ? (
+                  <img
+                    src={activeFrame.secondaryDevice.screenshot}
+                    alt="2nd screenshot"
+                    className="w-8 h-12 object-cover rounded border border-zinc-700"
+                  />
+                ) : (
+                  <Upload className="w-4 h-4 text-zinc-400" />
+                )}
+                <span className="text-xs text-zinc-300 font-medium truncate">
+                  {activeFrame.secondaryDevice?.screenshot
+                    ? "Change 2nd Screenshot"
+                    : "Upload 2nd Screenshot"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (evt) => {
+                        useEditorStore.getState().setSecondaryDevice({
+                          screenshot: evt.target?.result as string,
+                        });
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Sliders for 2nd Phone */}
+            <div className="space-y-3 pt-2 border-t border-zinc-800/60">
+              <SliderItem
+                label="2nd Phone Scale"
+                value={activeFrame.secondaryDevice?.scale ?? 0.88}
+                min={0.5}
+                max={1.5}
+                step={0.02}
+                unit="x"
+                onChange={(val) =>
+                  useEditorStore.getState().setSecondaryDevice({ scale: val })
+                }
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <SliderItem
+                  label="Offset X"
+                  value={activeFrame.secondaryDevice?.offsetX ?? -220}
+                  min={-500}
+                  max={500}
+                  step={10}
+                  onChange={(val) =>
+                    useEditorStore.getState().setSecondaryDevice({ offsetX: val })
+                  }
+                />
+                <SliderItem
+                  label="Offset Y"
+                  value={activeFrame.secondaryDevice?.offsetY ?? 60}
+                  min={-500}
+                  max={500}
+                  step={10}
+                  onChange={(val) =>
+                    useEditorStore.getState().setSecondaryDevice({ offsetY: val })
+                  }
+                />
+              </div>
+              <span className="text-[10px] text-zinc-500 block italic pt-1">
+                💡 Tip: You can also drag both phones directly on the canvas preview to reposition them anywhere!
+              </span>
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 };

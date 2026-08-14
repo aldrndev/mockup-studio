@@ -28,11 +28,11 @@ export const TemplatesPanel: React.FC = () => {
         <div className="flex items-center gap-2 mb-1">
           <Sparkles className="w-4 h-4 text-indigo-400" />
           <h2 className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
-            Play Store Templates
+            Design Templates
           </h2>
         </div>
         <p className="text-[11px] text-zinc-400 leading-relaxed">
-          1-Click styles optimized for high conversion on Google Play.
+          1-Click curated styles optimized for high conversion and showcase.
         </p>
       </div>
 

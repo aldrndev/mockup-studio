@@ -1,6 +1,7 @@
 import React from "react";
 import { Group, Rect, Text, Path } from "react-konva";
 import type { PlayStoreBadgesConfig } from "../../types/device";
+import { useEditorStore } from "../../store/useEditorStore";
 
 interface PlayStoreBadgesLayerProps {
   badges: PlayStoreBadgesConfig;
@@ -20,7 +21,6 @@ const CHECK_ICON = "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z";
 
 export const PlayStoreBadgesLayer: React.FC<PlayStoreBadgesLayerProps> = ({
   badges,
-  stageWidth: _stageWidth,
   stageHeight,
   activeFrameX,
   activeFrameWidth,
@@ -31,31 +31,63 @@ export const PlayStoreBadgesLayer: React.FC<PlayStoreBadgesLayerProps> = ({
     ratingCount,
     ratingStyle,
     ratingPosition,
+    ratingX,
+    ratingY,
     showDownloads,
     downloadCount,
     downloadIcon,
+    downloadsX,
+    downloadsY,
     showFeaturePills,
     featurePills,
+    pillsX,
+    pillsY,
     showFloatingShield,
     shieldColor = "#06b6d4",
+    shieldX,
+    shieldY,
   } = badges;
 
-  const centerX = activeFrameX + activeFrameWidth / 2;
+  const defaultCenterX = activeFrameX + activeFrameWidth / 2;
   const isLandscape = activeFrameWidth > stageHeight;
 
   // Scale factor proportional to 1080 standard width
   const s = Math.max(0.6, Math.min(1.4, activeFrameWidth / 1080));
 
-  // Y positions
+  // Default Y positions
   const topY = isLandscape ? 30 : Math.max(50, stageHeight * 0.05);
   const bottomY = stageHeight - (isLandscape ? 60 : 130);
-  const currentRatingY = ratingPosition === "bottom" ? bottomY : topY;
+  const defaultRatingY = ratingPosition === "bottom" ? bottomY : topY;
+
+  const curRatingX = ratingX !== undefined ? activeFrameX + ratingX * activeFrameWidth : defaultCenterX;
+  const curRatingY = ratingY !== undefined ? ratingY * stageHeight : defaultRatingY;
+
+  const curDownloadsX = downloadsX !== undefined ? activeFrameX + downloadsX * activeFrameWidth : defaultCenterX;
+  const curDownloadsY = downloadsY !== undefined ? downloadsY * stageHeight : curRatingY + (showRating ? 76 * s : 0);
+
+  const curPillsX = pillsX !== undefined ? activeFrameX + pillsX * activeFrameWidth : defaultCenterX;
+  const curPillsY = pillsY !== undefined ? pillsY * stageHeight : stageHeight - (isLandscape ? 80 : 150);
+
+  const curShieldX = shieldX !== undefined ? activeFrameX + shieldX * activeFrameWidth : defaultCenterX + 155 * s;
+  const curShieldY = shieldY !== undefined ? shieldY * stageHeight : stageHeight * 0.62;
 
   return (
-    <Group listening={false}>
+    <Group>
       {/* 1. PLAY STORE RATING BADGE */}
       {showRating && (
-        <Group x={centerX} y={currentRatingY}>
+        <Group
+          x={curRatingX}
+          y={curRatingY}
+          draggable={true}
+          onDragEnd={(e) => {
+            const newRelX = (e.target.x() - activeFrameX) / activeFrameWidth;
+            const newRelY = e.target.y() / stageHeight;
+            useEditorStore.getState().setBadges({
+              ratingX: Math.max(0.02, Math.min(0.98, newRelX)),
+              ratingY: Math.max(0.02, Math.min(0.98, newRelY)),
+            });
+          }}
+        >
           {ratingStyle === "google-play" && (
             <Group offsetX={(480 * s) / 2} y={0}>
               <Rect
@@ -196,7 +228,19 @@ export const PlayStoreBadgesLayer: React.FC<PlayStoreBadgesLayerProps> = ({
 
       {/* 2. DOWNLOAD & SOCIAL PROOF BADGE */}
       {showDownloads && (
-        <Group x={centerX} y={currentRatingY + (showRating ? 76 * s : 0)}>
+        <Group
+          x={curDownloadsX}
+          y={curDownloadsY}
+          draggable={true}
+          onDragEnd={(e) => {
+            const newRelX = (e.target.x() - activeFrameX) / activeFrameWidth;
+            const newRelY = e.target.y() / stageHeight;
+            useEditorStore.getState().setBadges({
+              downloadsX: Math.max(0.02, Math.min(0.98, newRelX)),
+              downloadsY: Math.max(0.02, Math.min(0.98, newRelY)),
+            });
+          }}
+        >
           <Group offsetX={(380 * s) / 2} y={0}>
             <Rect
               width={380 * s}
@@ -241,11 +285,17 @@ export const PlayStoreBadgesLayer: React.FC<PlayStoreBadgesLayerProps> = ({
       {/* 3. FLOATING FEATURE PILLS */}
       {showFeaturePills && featurePills.length > 0 && (
         <Group
-          x={centerX}
-          y={
-            stageHeight -
-            (isLandscape ? 80 : 150)
-          }
+          x={curPillsX}
+          y={curPillsY}
+          draggable={true}
+          onDragEnd={(e) => {
+            const newRelX = (e.target.x() - activeFrameX) / activeFrameWidth;
+            const newRelY = e.target.y() / stageHeight;
+            useEditorStore.getState().setBadges({
+              pillsX: Math.max(0.02, Math.min(0.98, newRelX)),
+              pillsY: Math.max(0.02, Math.min(0.98, newRelY)),
+            });
+          }}
         >
           {(() => {
             const pillWidth = 270 * s;
@@ -305,12 +355,21 @@ export const PlayStoreBadgesLayer: React.FC<PlayStoreBadgesLayerProps> = ({
         </Group>
       )}
 
-      {/* 4. HOLOGRAPHIC 3D FLOATING NEON SHIELD BADGE (Image 2 Cyber Style) */}
+      {/* 4. HOLOGRAPHIC 3D FLOATING NEON SHIELD BADGE */}
       {showFloatingShield && (
         <Group
-          x={centerX + 155 * s}
-          y={stageHeight * 0.62}
+          x={curShieldX}
+          y={curShieldY}
           rotation={-6}
+          draggable={true}
+          onDragEnd={(e) => {
+            const newRelX = (e.target.x() - activeFrameX) / activeFrameWidth;
+            const newRelY = e.target.y() / stageHeight;
+            useEditorStore.getState().setBadges({
+              shieldX: Math.max(0.02, Math.min(0.98, newRelX)),
+              shieldY: Math.max(0.02, Math.min(0.98, newRelY)),
+            });
+          }}
         >
           {/* Outer Neon Glow Halo */}
           <Path
