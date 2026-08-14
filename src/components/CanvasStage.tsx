@@ -30,7 +30,7 @@ import type {
 import { VectorBackgroundLayer } from "./canvas/VectorBackgroundLayer";
 import { PlayStoreBadgesLayer } from "./canvas/PlayStoreBadgesLayer";
 import { calculateFrameLayout } from "../utils/frameLayout";
-import { loadImage } from "../utils/loadImage";
+import { loadImage, fileToDataUrl } from "../utils/loadImage";
 import {
   createNoiseImage,
   createDotPattern,
@@ -247,17 +247,27 @@ function SamsungS25UltraBody({ meta, frame }: { meta: DeviceMeta; frame: Frame }
   // 3D Perspective Extrusion with ScaleX/ScaleY projection compensation:
   const rotateY = frame.rotateY || 0;
   const rotateX = frame.rotateX || 0;
-  const chassisDepth = frame.depth || 52;
+  const skewX = frame.skewX || 0;
+  const skewY = frame.skewY || 0;
+  const chassisDepth = frame.depth ?? 52;
 
-  // Compensate for Konva group's cos(rotateY) / cos(rotateX) compression:
-  const radY = (rotateY * Math.PI) / 180;
-  const radX = (rotateX * Math.PI) / 180;
+  // Effective 3D angles including skew/tilt
+  const effY = rotateY !== 0 ? rotateY : (skewX !== 0 ? -skewX * 0.75 : 0);
+  const effX = rotateX !== 0 ? rotateX : (skewY !== 0 ? skewY * 0.75 : 0);
+
+  const radY = (effY * Math.PI) / 180;
+  const radX = (effX * Math.PI) / 180;
   const cosY = Math.max(0.18, Math.abs(Math.cos(radY)));
   const cosX = Math.max(0.18, Math.abs(Math.cos(radX)));
 
-  const dx = -Math.sign(rotateY) * (Math.abs(Math.sin(radY)) / cosY) * chassisDepth;
-  const dy = Math.sign(rotateX) * (Math.abs(Math.sin(radX)) / cosX) * (chassisDepth * 0.75);
-  const is3D = Math.abs(rotateY) > 0.5 || Math.abs(rotateX) > 0.5;
+  const isAngle3D = Math.abs(effY) > 0.3 || Math.abs(effX) > 0.3;
+  const dx = isAngle3D
+    ? -Math.sign(effY) * (Math.abs(Math.sin(radY)) / cosY) * (chassisDepth * 1.1)
+    : 0;
+  const dy = isAngle3D
+    ? Math.sign(effX) * (Math.abs(Math.sin(radX)) / cosX) * (chassisDepth * 0.85)
+    : Math.max(2, chassisDepth * 0.08);
+  const is3D = isAngle3D || chassisDepth > 10;
 
   return (
     <Group>
@@ -607,17 +617,27 @@ function IPhone16ProBody({ meta, frame }: { meta: DeviceMeta; frame: Frame }) {
   // 3D Perspective Extrusion with ScaleX/ScaleY projection compensation:
   const rotateY = frame.rotateY || 0;
   const rotateX = frame.rotateX || 0;
-  const chassisDepth = frame.depth || 52;
+  const skewX = frame.skewX || 0;
+  const skewY = frame.skewY || 0;
+  const chassisDepth = frame.depth ?? 52;
 
-  // Compensate for Konva group's cos(rotateY) / cos(rotateX) compression:
-  const radY = (rotateY * Math.PI) / 180;
-  const radX = (rotateX * Math.PI) / 180;
+  // Effective 3D angles including skew/tilt
+  const effY = rotateY !== 0 ? rotateY : (skewX !== 0 ? -skewX * 0.75 : 0);
+  const effX = rotateX !== 0 ? rotateX : (skewY !== 0 ? skewY * 0.75 : 0);
+
+  const radY = (effY * Math.PI) / 180;
+  const radX = (effX * Math.PI) / 180;
   const cosY = Math.max(0.18, Math.abs(Math.cos(radY)));
   const cosX = Math.max(0.18, Math.abs(Math.cos(radX)));
 
-  const dx = -Math.sign(rotateY) * (Math.abs(Math.sin(radY)) / cosY) * chassisDepth;
-  const dy = Math.sign(rotateX) * (Math.abs(Math.sin(radX)) / cosX) * (chassisDepth * 0.75);
-  const is3D = Math.abs(rotateY) > 0.5 || Math.abs(rotateX) > 0.5;
+  const isAngle3D = Math.abs(effY) > 0.3 || Math.abs(effX) > 0.3;
+  const dx = isAngle3D
+    ? -Math.sign(effY) * (Math.abs(Math.sin(radY)) / cosY) * (chassisDepth * 1.1)
+    : 0;
+  const dy = isAngle3D
+    ? Math.sign(effX) * (Math.abs(Math.sin(radX)) / cosX) * (chassisDepth * 0.85)
+    : Math.max(2, chassisDepth * 0.08);
+  const is3D = isAngle3D || chassisDepth > 10;
 
   return (
     <Group>
@@ -1155,7 +1175,7 @@ function MockupScreenPlaceholder({ meta }: { meta: DeviceMeta }) {
   const sh = meta.screen.height;
 
   return (
-    <Group x={sx} y={sy} width={sw} height={sh} listening={false}>
+    <Group x={sx} y={sy} width={sw} height={sh}>
       {/* 1. Neutral Dark Studio Glass Background */}
       <Rect
         width={sw}
@@ -1222,13 +1242,13 @@ function MockupScreenPlaceholder({ meta }: { meta: DeviceMeta }) {
             width={sw - 40}
             height={160}
             cornerRadius={18}
-            fill="rgba(99, 102, 241, 0.05)"
-            stroke="rgba(99, 102, 241, 0.25)"
+            fill="rgba(99, 102, 241, 0.08)"
+            stroke="rgba(99, 102, 241, 0.35)"
             strokeWidth={1.5}
             dash={[6, 6]}
           />
           {/* Center Upload Icon */}
-          <Circle x={(sw - 40) / 2} y={55} radius={22} fill="rgba(99, 102, 241, 0.15)" />
+          <Circle x={(sw - 40) / 2} y={55} radius={22} fill="rgba(99, 102, 241, 0.22)" />
           <Text
             x={(sw - 40) / 2 - 8}
             y={42}
@@ -1236,25 +1256,25 @@ function MockupScreenPlaceholder({ meta }: { meta: DeviceMeta }) {
             fontSize={20}
             fontFamily="Inter"
             fontStyle="bold"
-            fill="#818cf8"
+            fill="#a5b4fc"
           />
           <Text
             y={90}
             width={sw - 40}
-            text="Upload Your App Screenshot"
+            text="Click Device to Upload"
             fontSize={13}
             fontFamily="Inter"
             fontStyle="bold"
-            fill="#e2e8f0"
+            fill="#ffffff"
             align="center"
           />
           <Text
             y={114}
             width={sw - 40}
-            text="Drag & drop or browse in Upload tab"
+            text="PNG / JPG / WebP up to 8MB"
             fontSize={10}
             fontFamily="Inter"
-            fill="#64748b"
+            fill="#818cf8"
             align="center"
           />
         </Group>
@@ -1384,8 +1404,39 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
     [layout, stageHeight]
   );
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const targetUploadFrameIdRef = useRef<string | null>(null);
+
+  const handleScreenClick = useCallback((frameId: string) => {
+    targetUploadFrameIdRef.current = frameId;
+    useEditorStore.getState().setActiveFrame(frameId);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+      fileInputRef.current.click();
+    }
+  }, []);
+
+  const handleFileInputChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file && (file.type.startsWith("image/") || file.name.match(/\.(png|jpg|jpeg|webp)$/i))) {
+        const dataUrl = await fileToDataUrl(file);
+        const targetId = targetUploadFrameIdRef.current || useEditorStore.getState().activeFrameId;
+        useEditorStore.getState().setScreenshot(dataUrl, targetId);
+      }
+    },
+    []
+  );
+
   return (
-    <div ref={containerRef} className="canvas-frame p-2 overflow-hidden flex items-center justify-center">
+    <div ref={containerRef} className="canvas-frame p-2 overflow-hidden flex items-center justify-center relative">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/jpg"
+        className="hidden"
+        onChange={handleFileInputChange}
+      />
       <Stage
         ref={stageRef}
         width={totalStageWidth}
@@ -1416,7 +1467,11 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
         }}
       >
         {/* 1. MASTER BACKGROUND & VECTOR OVERLAY LAYER */}
-        <Layer>
+        <Layer
+          onClick={() => {
+            useEditorStore.getState().setActiveTab("backgrounds");
+          }}
+        >
           {/* Base Solid */}
           {background.type === "solid" && (
             <Rect
@@ -1619,6 +1674,7 @@ export function CanvasStage({ stageRef }: CanvasStageProps) {
                 backdrop={background.backdrop}
                 backdropColor={background.color1}
                 onTextDragEnd={handleTextDragEnd}
+                onScreenClick={handleScreenClick}
                 frameIndex={index}
                 totalFrames={layout.frames.length}
               />
@@ -2505,6 +2561,22 @@ function FloatingActionBarSingle({
       skewY={skewY}
       scaleY={scaleY}
       draggable={isActive}
+      onClick={(e) => {
+        e.cancelBubble = true;
+        useEditorStore.getState().setActiveTab("decorations");
+      }}
+      onTap={(e) => {
+        e.cancelBubble = true;
+        useEditorStore.getState().setActiveTab("decorations");
+      }}
+      onMouseEnter={(e) => {
+        const stage = e.target.getStage();
+        if (stage?.container()) stage.container().style.cursor = "pointer";
+      }}
+      onMouseLeave={(e) => {
+        const stage = e.target.getStage();
+        if (stage?.container()) stage.container().style.cursor = "default";
+      }}
       onDragEnd={(e) => {
         const newRelX = e.target.x() / canvasWidth;
         const newRelY = e.target.y() / canvasHeight;
@@ -2843,6 +2915,7 @@ function FrameContent({
   backdrop,
   backdropColor,
   onTextDragEnd,
+  onScreenClick,
   frameIndex,
   totalFrames,
 }: {
@@ -2857,6 +2930,7 @@ function FrameContent({
   backdropColor?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onTextDragEnd: (id: string, type: "headline" | "subtitle", e: any) => void;
+  onScreenClick: (frameId: string) => void;
   frameIndex: number;
   totalFrames: number;
 }) {
@@ -3077,6 +3151,16 @@ function FrameContent({
             y: deviceMeta.frameHeight / 2,
           }}
           draggable={isActive}
+          onClick={(e) => {
+            e.cancelBubble = true;
+            useEditorStore.getState().setActiveTab("devices");
+            useEditorStore.getState().setActiveFrame(frame.id);
+          }}
+          onTap={(e) => {
+            e.cancelBubble = true;
+            useEditorStore.getState().setActiveTab("devices");
+            useEditorStore.getState().setActiveFrame(frame.id);
+          }}
           onDragEnd={handleDeviceDragEnd}
         >
           <DeviceBody meta={deviceMeta} deviceType={deviceType} frame={frame} />
@@ -3095,6 +3179,24 @@ function FrameContent({
               ctx.arcTo(sx, sy + sh, sx, sy, r);
               ctx.arcTo(sx, sy, sx + sw, sy, r);
               ctx.closePath();
+            }}
+            onClick={(e) => {
+              e.cancelBubble = true;
+              onScreenClick(frame.id);
+            }}
+            onTap={(e) => {
+              e.cancelBubble = true;
+              onScreenClick(frame.id);
+            }}
+            onMouseEnter={(e) => {
+              const stage = e.target.getStage();
+              const container = stage?.container();
+              if (container) container.style.cursor = "pointer";
+            }}
+            onMouseLeave={(e) => {
+              const stage = e.target.getStage();
+              const container = stage?.container();
+              if (container) container.style.cursor = "default";
             }}
           >
             {screenshotImage && screenshotFit ? (
@@ -3230,6 +3332,38 @@ function FrameContent({
               shadowOpacity={0.6}
               shadowOffsetY={4}
               draggable={isActive}
+              onClick={(e) => {
+                e.cancelBubble = true;
+                useEditorStore.getState().setActiveTab("marketing");
+                useEditorStore.getState().setActiveFrame(frame.id);
+                setTimeout(() => {
+                  const el = document.getElementById("headline-input");
+                  if (el) {
+                    el.focus();
+                    if (el instanceof HTMLInputElement) el.select();
+                  }
+                }, 80);
+              }}
+              onTap={(e) => {
+                e.cancelBubble = true;
+                useEditorStore.getState().setActiveTab("marketing");
+                useEditorStore.getState().setActiveFrame(frame.id);
+                setTimeout(() => {
+                  const el = document.getElementById("headline-input");
+                  if (el) {
+                    el.focus();
+                    if (el instanceof HTMLInputElement) el.select();
+                  }
+                }, 80);
+              }}
+              onMouseEnter={(e) => {
+                const stage = e.target.getStage();
+                if (stage?.container()) stage.container().style.cursor = "text";
+              }}
+              onMouseLeave={(e) => {
+                const stage = e.target.getStage();
+                if (stage?.container()) stage.container().style.cursor = "default";
+              }}
               onDragEnd={(e) => onTextDragEnd(frame.id, "headline", e)}
             />
           </Group>
@@ -3251,6 +3385,38 @@ function FrameContent({
             shadowOpacity={0.5}
             shadowOffsetY={2}
             draggable={isActive}
+            onClick={(e) => {
+              e.cancelBubble = true;
+              useEditorStore.getState().setActiveTab("marketing");
+              useEditorStore.getState().setActiveFrame(frame.id);
+              setTimeout(() => {
+                const el = document.getElementById("subtitle-input");
+                if (el) {
+                  el.focus();
+                  if (el instanceof HTMLTextAreaElement) el.select();
+                }
+              }, 80);
+            }}
+            onTap={(e) => {
+              e.cancelBubble = true;
+              useEditorStore.getState().setActiveTab("marketing");
+              useEditorStore.getState().setActiveFrame(frame.id);
+              setTimeout(() => {
+                const el = document.getElementById("subtitle-input");
+                if (el) {
+                  el.focus();
+                  if (el instanceof HTMLTextAreaElement) el.select();
+                }
+              }, 80);
+            }}
+            onMouseEnter={(e) => {
+              const stage = e.target.getStage();
+              if (stage?.container()) stage.container().style.cursor = "text";
+            }}
+            onMouseLeave={(e) => {
+              const stage = e.target.getStage();
+              if (stage?.container()) stage.container().style.cursor = "default";
+            }}
             onDragEnd={(e) => onTextDragEnd(frame.id, "subtitle", e)}
           />
         )}

@@ -349,7 +349,7 @@ export const FloatingElementsPanel: React.FC = () => {
                     <span>
                       {BAR_ICONS.find((ic) => ic.id === bar.icon)?.emoji || "🏷️"}
                     </span>
-                    <span className="max-w-[110px] truncate">{bar.text || `Bar #${i + 1}`}</span>
+                    <span className="max-w-28 truncate">{bar.text || `Bar #${i + 1}`}</span>
                   </button>
                 ))}
               </div>

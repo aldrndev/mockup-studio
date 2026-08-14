@@ -370,7 +370,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onExportClick }) => {
                   ].map((cp) => (
                     <button
                       key={cp.key}
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       onClick={() => setCutPreset(cp.key as CutPreset)}
                       className={`py-1 px-1.5 rounded-lg text-[10px] font-bold border transition-all text-center ${
                         cutPreset === cp.key

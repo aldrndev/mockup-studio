@@ -72,7 +72,30 @@ export const PlayStoreBadgesLayer: React.FC<PlayStoreBadgesLayerProps> = ({
   const curShieldY = shieldY !== undefined ? shieldY * stageHeight : stageHeight * 0.62;
 
   return (
-    <Group>
+    <Group
+      onClick={(e) => {
+        e.cancelBubble = true;
+        useEditorStore.getState().setActiveTab("marketing");
+        setTimeout(() => {
+          document.getElementById("badges-section")?.scrollIntoView({ behavior: "smooth" });
+        }, 80);
+      }}
+      onTap={(e) => {
+        e.cancelBubble = true;
+        useEditorStore.getState().setActiveTab("marketing");
+        setTimeout(() => {
+          document.getElementById("badges-section")?.scrollIntoView({ behavior: "smooth" });
+        }, 80);
+      }}
+      onMouseEnter={(e) => {
+        const stage = e.target.getStage();
+        if (stage?.container()) stage.container().style.cursor = "pointer";
+      }}
+      onMouseLeave={(e) => {
+        const stage = e.target.getStage();
+        if (stage?.container()) stage.container().style.cursor = "default";
+      }}
+    >
       {/* 1. PLAY STORE RATING BADGE */}
       {showRating && (
         <Group

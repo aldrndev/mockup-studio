@@ -166,7 +166,7 @@ interface EditorState {
   reorderFrame: (fromIndex: number, toIndex: number) => void;
 
   // Active Frame Actions (Proxies)
-  setScreenshot: (src: string | null) => void;
+  setScreenshot: (src: string | null, targetFrameId?: string) => void;
   setHeadline: (text: Partial<TextOverlay>) => void;
   setSubtitle: (text: Partial<TextOverlay>) => void;
   setFrameProperties: (props: {
@@ -862,14 +862,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }),
 
   // Active Frame Actions with History
-  setScreenshot: (src) =>
+  setScreenshot: (src, targetFrameId) =>
     set((state) => {
       const snapshot = getSnapshot(state);
+      const targetId = targetFrameId || state.activeFrameId;
       return {
         past: [...state.past, snapshot].slice(-30),
         future: [],
         frames: state.frames.map((c) =>
-          c.id === state.activeFrameId ? { ...c, screenshot: src } : c
+          c.id === targetId ? { ...c, screenshot: src } : c
         ),
       };
     }),

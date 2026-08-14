@@ -106,11 +106,12 @@ export const MarketingBadgesPanel: React.FC = () => {
             </span>
           </div>
           <input
+            id="headline-input"
             type="text"
             value={headline.text}
             onChange={(e) => setHeadline({ text: e.target.value.slice(0, 90) })}
             placeholder="e.g. ATURAN POLA & SARAN AI"
-            className="w-full h-10 px-3 bg-zinc-900/60 border border-zinc-800 rounded-xl text-xs text-white placeholder:text-zinc-600 outline-none focus:border-indigo-500/60 font-semibold"
+            className="w-full h-10 px-3 bg-zinc-900/60 border border-zinc-800 rounded-xl text-xs text-white placeholder:text-zinc-600 outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500 font-semibold transition-all"
           />
         </div>
 
@@ -169,13 +170,14 @@ export const MarketingBadgesPanel: React.FC = () => {
             </span>
           </div>
           <textarea
+            id="subtitle-input"
             value={subtitle.text}
             onChange={(e) =>
               setSubtitle({ text: e.target.value.slice(0, 180) })
             }
             placeholder="Describe your killer features clearly..."
             rows={2}
-            className="w-full p-2.5 bg-zinc-900/60 border border-zinc-800 rounded-xl text-xs text-zinc-300 placeholder:text-zinc-600 outline-none focus:border-indigo-500/60 leading-relaxed resize-none"
+            className="w-full p-2.5 bg-zinc-900/60 border border-zinc-800 rounded-xl text-xs text-zinc-300 placeholder:text-zinc-600 outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500 leading-relaxed resize-none transition-all"
           />
         </div>
 
@@ -253,7 +255,7 @@ export const MarketingBadgesPanel: React.FC = () => {
       </section>
 
       {/* 2. PLAY STORE ⭐ 4.9 RATING BADGE */}
-      <section className="space-y-3">
+      <section id="badges-section" className="space-y-3 pt-2 border-t border-zinc-800/80">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Star className="w-3.5 h-3.5 text-amber-400" />

@@ -5,6 +5,7 @@ import {
   Monitor,
   Smartphone,
   LayoutTemplate,
+  Layers,
 } from "lucide-react";
 import { useEditorStore } from "../../store/useEditorStore";
 
@@ -233,16 +234,28 @@ export function FrameTuner() {
               />
             </div>
 
-            <Slider
-              label="Scale"
-              icon={Maximize}
-              value={activeFrame.scale}
-              min={0.1}
-              max={3.0}
-              step={0.05}
-              unit="x"
-              onChange={(val) => setFrameProperties({ scale: val })}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <Slider
+                label="3D Depth"
+                icon={Layers}
+                value={activeFrame.depth || 52}
+                min={10}
+                max={120}
+                step={2}
+                unit="px"
+                onChange={(val) => setFrameProperties({ depth: val })}
+              />
+              <Slider
+                label="Scale"
+                icon={Maximize}
+                value={activeFrame.scale}
+                min={0.1}
+                max={3.0}
+                step={0.05}
+                unit="x"
+                onChange={(val) => setFrameProperties({ scale: val })}
+              />
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <Slider

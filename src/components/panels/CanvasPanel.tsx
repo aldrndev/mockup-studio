@@ -11,7 +11,6 @@ import {
   Tv,
   Store,
   Apple,
-  Info,
 } from "lucide-react";
 import { useEditorStore } from "../../store/useEditorStore";
 import type { CutPreset } from "../../store/useEditorStore";
@@ -316,18 +315,7 @@ export const CanvasPanel: React.FC = () => {
 
   return (
     <div className="p-4 space-y-5 select-none font-sans">
-      {/* 1. STORE GUIDELINES SUMMARY ACCORDION / BADGE */}
-      <div className="p-3 rounded-xl bg-linear-to-r from-indigo-950/40 via-purple-950/20 to-zinc-900 border border-indigo-800/40 space-y-1.5">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-300">
-          <Info size={14} className="text-indigo-400 shrink-0" />
-          <span>Standar Requirement Toko Aplikasi</span>
-        </div>
-        <p className="text-[11px] text-zinc-400 leading-relaxed">
-          Semua ukuran preset telah disesuaikan agar <span className="text-zinc-200 font-semibold">memenuhi syarat promosi</span> Google Play (rasio 9:16 / 16:9, min. 1080px) dan Apple App Store Connect.
-        </p>
-      </div>
-
-      {/* 2. CUSTOM CANVAS DIMENSIONS */}
+      {/* 1. CUSTOM CANVAS DIMENSIONS */}
       <section className="space-y-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">

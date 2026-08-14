@@ -225,7 +225,7 @@ export const VectorBackgroundPanel: React.FC = () => {
         </div>
 
         {/* Vector Preset Grid */}
-        <div className="grid grid-cols-2 gap-2 max-h-[360px] overflow-y-auto pr-1 scrollbar-thin">
+        <div className="grid grid-cols-2 gap-2 max-h-90 overflow-y-auto pr-1 scrollbar-thin">
           {filteredPresets.map((vp) => (
             <button
               key={vp.type}
